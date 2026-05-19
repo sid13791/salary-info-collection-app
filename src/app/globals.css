@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 255 255 255;
+  --fg: 17 24 39;
+  --muted: 243 244 246;
+  --muted-fg: 107 114 128;
+  --border: 229 231 235;
+  --primary: 37 99 235;
+  --primary-fg: 255 255 255;
+  --danger: 220 38 38;
+  --success: 22 163 74;
+  --warning: 217 119 6;
+}
+
+html, body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+
+* {
+  border-color: rgb(var(--border));
+}
