@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import type { Packer } from "@/lib/supabase/types";
+import type { Packer } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 

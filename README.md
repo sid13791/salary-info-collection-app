@@ -1,71 +1,62 @@
 # Salary Info Collection App
 
 Web app for collecting packer bank-account details for monthly salary payouts.
-Replaces the manual Excel collection process. Designed for a small ops team
-(1–few admins, ~50 store managers, 100–500 active packers).
+Replaces the manual Excel collection process for a small ops team (1–few admins,
+~50 store managers, 100–500 active packers).
 
-**Stack:** Next.js 14 (App Router) + TypeScript + Tailwind + Supabase (Postgres + Auth + RLS) + SheetJS.
+**Stack:** Next.js 14 (App Router) + TypeScript + Tailwind + **SQLite (node:sqlite, built-in)** + SheetJS.
+Zero external services. Runs entirely on a single machine or server.
 
-See [the design spec](C:/Users/2750834/.claude/plans/i-want-to-create-hidden-glade.md) for the full design.
+> Design spec: `C:/Users/2750834/.claude/plans/i-want-to-create-hidden-glade.md`
 
 ---
 
 ## What it does
 
-- **Admin** uploads a monthly packer roster (`emp_id, name, store_code` in Excel). The app diffs against the existing DB: matches by `(emp_id, store_id)`, carries forward bank details, adds new joiners, and marks dropped packers inactive.
-- **Manager** (one login per store) logs in and fills in `bank_account_no`, `ifsc_code`, and `phone` for each packer in their store. Mobile-first UI.
-- **Admin** opens/closes monthly cycles. When the cycle is closed, edits are locked and a snapshot is taken into `cycle_packers`.
-- **Admin** downloads a consolidated Excel (`emp_id, name, store, bank_account_no, ifsc_code, phone, amount` — amount column blank) to merge with payroll amounts before uploading to ICICI corporate banking.
-- **Full audit log** of every bank-detail change, who and when.
+- **Admin** uploads a monthly packer roster (`emp_id, name, store_code` in Excel). The app diffs against the DB — matches by `(emp_id, store_id)`, carries forward bank details, adds new joiners, marks dropped packers inactive.
+- **Manager** (one login per store) logs in and fills `bank_account_no`, `ifsc_code`, `phone` for each packer in their store. Mobile-first UI.
+- **Admin** opens/closes monthly cycles. When closed, edits lock and a snapshot is written into `cycle_packers`.
+- **Admin** downloads a consolidated Excel (`emp_id, name, store, bank_account_no, ifsc_code, phone, amount` — amount blank) to merge with payroll before uploading to ICICI corporate banking.
+- **Full audit log** of every bank-detail change with who and when.
 
 ---
 
-## One-time setup
+## Setup (3 commands)
 
-### 1. Create a Supabase project
-
-Go to https://supabase.com → New Project. You need three secrets:
-
-- `Project URL` (e.g. `https://abcxyz.supabase.co`)
-- `anon` public key
-- `service_role` secret key
-
-### 2. Apply the schema
-
-In the Supabase SQL editor, run these files in order:
-
-1. `db/schema.sql` — tables, indexes, helper functions
-2. `db/triggers.sql` — audit trigger on `packers`
-3. `db/policies.sql` — Row Level Security
-4. `db/seed.sql` — sample stores + packers (edit before running)
-
-### 3. Create the first admin user
-
-Supabase Dashboard → **Authentication → Users → Add user** (email + password).
-Then in SQL editor:
-
-```sql
-insert into app_users (id, email, role, store_id, must_change_password)
-values ('<the-auth-uid-you-just-created>', 'admin@example.com', 'admin', null, true);
-```
-
-Managers can be created from the **Managers** screen in the running app after you log in as admin.
-
-### 4. Local env
-
-```bash
-cp .env.local.example .env.local
-# Fill in the three Supabase values
-```
-
-### 5. Run
+Requires **Node 24+** (for built-in `node:sqlite`).
 
 ```bash
 npm install
+npm run db:init                              # creates ./data/app.db + 2 sample stores + 5 demo packers + opens current cycle
+npm run db:create-admin -- admin@example.com mySecretPw123
+```
+
+Then:
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:3000 and log in.
+Open http://localhost:3000 and sign in.
+
+The whole app — database, sessions, password hashing, Excel parsing/generation —
+runs in one Node process. No external service needed.
+
+---
+
+## Creating manager logins
+
+1. Log in as admin → **Managers** → fill email + temp password + pick a store
+2. Share those credentials with the store manager
+3. They sign in at the same URL and see only their store's packers
+
+---
+
+## Where data lives
+
+- **`./data/app.db`** — SQLite database file. Git-ignored. Back this up.
+- WAL files (`app.db-wal`, `app.db-shm`) — created by SQLite during use, also git-ignored.
+- Set `SALARY_DB_PATH` env var to move the DB elsewhere (e.g. a network drive for shared backups).
 
 ---
 
@@ -75,61 +66,67 @@ Open http://localhost:3000 and log in.
 src/
   app/
     login/                login page + form
-    admin/                admin dashboard + sub-pages (roster, export, audit, managers, add-packer)
-    manager/              manager dashboard + edit screen (mobile-first)
-    api/                  route handlers (cycle, roster, packers, export, managers)
+    admin/                dashboard + roster + export + audit + managers + add-packer
+    manager/              dashboard + edit screen (mobile-first)
+    api/                  route handlers (auth, cycle, roster, packers, export, managers)
   components/             shared UI (Header, Button, Input, Badge)
   lib/
-    supabase/             client/server/service-role wrappers + DB types
-    validators.ts         IFSC/account/phone regex + Zod schemas
+    db.ts                 node:sqlite singleton + typed query helpers
+    session.ts            cookie-based sessions backed by sessions table
+    password.ts           scrypt hash/verify (no external deps)
+    auth.ts               requireUser / requireAdmin / requireManager guards
+    validators.ts         IFSC / account / phone regex + Zod schemas
     roster-diff.ts        pure function: (existing, uploaded) → diff
     excel/                parse-roster.ts, generate-export.ts
-    auth.ts               requireUser / requireAdmin / requireManager (server-side)
 db/
-  schema.sql              tables + indexes
-  triggers.sql            audit trigger + status derivation
-  policies.sql            RLS policies
-  seed.sql                sample data
+  schema.sql              tables, indexes, CHECK constraints
+scripts/
+  init-db.mjs             apply schema + seed sample data
+  create-admin.mjs        create or reset an admin password
 ```
 
 ---
 
 ## Commands
 
-| Command            | What it does                          |
-|--------------------|---------------------------------------|
-| `npm run dev`      | Dev server on http://localhost:3000   |
-| `npm run build`    | Production build                      |
-| `npm run start`    | Run production build                  |
-| `npm run typecheck`| TypeScript check (no emit)            |
-| `npm run test`     | Run vitest unit tests                 |
-| `npm run lint`     | Lint                                  |
+| Command                                       | What it does                                |
+|-----------------------------------------------|---------------------------------------------|
+| `npm run dev`                                 | Dev server on http://localhost:3000         |
+| `npm run build`                               | Production build                            |
+| `npm run start`                               | Run production build                        |
+| `npm run typecheck`                           | TypeScript check                            |
+| `npm run test`                                | vitest unit tests                           |
+| `npm run db:init`                             | Apply schema, seed sample data              |
+| `npm run db:create-admin -- email password`   | Create or reset an admin user               |
 
 ---
 
 ## Security model
 
-- **All authorization lives in Postgres RLS** (`db/policies.sql`).
-  A bug in app code cannot leak one store's data to another store's manager.
-- **Managers can only `UPDATE` their own store's packers**, and only when a cycle is `open`.
-- **Audit logging is a Postgres trigger** (`SECURITY DEFINER`) — app code cannot bypass it.
-- **Format constraints are CHECK constraints** in the DB — even direct SQL injection cannot insert a malformed IFSC.
-- **Service-role key** is used only in server-side `/api/*` routes for actions that legitimately need to bypass RLS (admin user creation, cycle close snapshot).
-- **No public sign-up.** Admin creates manager logins; managers cannot self-register.
+- **Password hashing:** `scrypt` from `node:crypto` (memory-hard, no external dep).
+- **Sessions:** opaque random tokens (32 bytes, `httpOnly` cookie), backed by a `sessions` table with a 30-day expiry. Logout deletes the row.
+- **Authorization:** enforced in route handlers + page guards. Managers can only `SELECT/UPDATE` packers where `store_id = me.store_id` AND a cycle is `open`. Admin overrides apply.
+- **DB-level integrity:** `CHECK` constraints on `packers` reject malformed IFSC / account / phone even if the app code is bypassed.
+- **No public sign-up.** Only admin creates manager logins.
+- **No external services.** No Supabase, no auth provider, no telemetry.
 
 ---
 
-## Verification script (manual E2E)
+## Verification (manual E2E)
 
-See `docs/superpowers/specs/` (or the design spec) for the 10-step manual test
-covering: cycle open, roster upload diff, manual add, manager edit + validation,
-RLS isolation, re-upload preserving edits, cycle close + lock, export, audit log,
-reopen cycle.
+1. `npm run db:init && npm run db:create-admin -- admin@example.com pw12345678 && npm run dev`
+2. Log in as `admin@example.com` → dashboard shows 2 sample stores, 5 packers, cycle OPEN
+3. **Managers** → create `mgr.ncr@example.com / pw12345678` for NCR01
+4. Sign out, sign in as the manager → see only NCR01 packers (3 sample) → tap one → fill bank details → save → status flips to *Provided*
+5. Sign out, sign in as admin → **Upload roster** → upload an Excel with mixed new/existing emp_ids → diff preview shows correct counts → confirm → manager edits preserved
+6. **+ Add packer** → manually add one → appears immediately
+7. Close cycle → manager edit save now blocked
+8. **Download bank export** → opens in Excel with all active packers + blank amount column
+9. **Audit log** → every edit attributed to the right user with old → new values
+10. Open a new cycle for next month → repeat
 
 ---
 
 ## Out of scope (v1)
 
-Packer-facing UI, salary amount calculation, SMS/email notifications, native
-mobile app, multi-language, 2FA, manager self-service password reset.
-See the design spec for rationale.
+Packer-facing UI, salary amount calculation, SMS/email notifications, native mobile app, multi-language, 2FA, manager self-service password reset, multi-user simultaneous editing of the same packer (last write wins). See the design spec for rationale.

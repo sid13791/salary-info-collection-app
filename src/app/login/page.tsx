@@ -1,20 +1,13 @@
 import { redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/session";
 import { LoginForm } from "./LoginForm";
 
-export default async function LoginPage() {
-  const supabase = getServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+export const dynamic = "force-dynamic";
 
+export default function LoginPage() {
+  const user = getCurrentUser();
   if (user) {
-    const { data: profile } = await supabase
-      .from("app_users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profile?.role === "admin") redirect("/admin");
-    if (profile?.role === "manager") redirect("/manager");
+    redirect(user.role === "admin" ? "/admin" : "/manager");
   }
 
   return (

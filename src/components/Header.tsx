@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getBrowserSupabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 
 export function Header({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
   const router = useRouter();
 
   async function signOut() {
-    const supabase = getBrowserSupabase();
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   }

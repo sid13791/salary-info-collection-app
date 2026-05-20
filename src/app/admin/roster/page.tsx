@@ -5,8 +5,8 @@ import { RosterUploader } from "./RosterUploader";
 
 export const dynamic = "force-dynamic";
 
-export default async function RosterUploadPage() {
-  await requireAdmin();
+export default function RosterUploadPage() {
+  requireAdmin();
   return (
     <div className="min-h-screen">
       <Header title="Upload Roster" subtitle="Replaces inactive flags + adds new packers">

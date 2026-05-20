@@ -1,22 +1,18 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireManager } from "@/lib/auth";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getPackerById, getOpenCycle } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { EditPackerForm } from "./EditPackerForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditPackerPage({ params }: { params: { id: string } }) {
-  const me = await requireManager();
-  const supabase = getServerSupabase();
-
-  const { data: packer } = await supabase.from("packers").select("*").eq("id", params.id).maybeSingle();
+export default function EditPackerPage({ params }: { params: { id: string } }) {
+  const me = requireManager();
+  const packer = getPackerById(params.id);
   if (!packer) notFound();
   if (packer.store_id !== me.store_id) redirect("/manager");
-
-  const { data: cycle } = await supabase.from("cycles").select("*").eq("status", "open").maybeSingle();
-  if (!cycle) redirect("/manager");
+  if (!getOpenCycle()) redirect("/manager");
 
   return (
     <div className="min-h-screen">

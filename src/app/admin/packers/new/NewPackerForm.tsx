@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { Store } from "@/lib/supabase/types";
+import type { Store } from "@/lib/db";
 
 export function NewPackerForm({ stores, cycleOpen }: { stores: Pick<Store, "id" | "code" | "name">[]; cycleOpen: boolean }) {
   const router = useRouter();

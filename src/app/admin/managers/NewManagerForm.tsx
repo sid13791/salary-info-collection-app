@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Store } from "@/lib/supabase/types";
+import type { Store } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -31,7 +31,7 @@ export function NewManagerForm({ stores }: { stores: Pick<Store, "id" | "code" |
       setError(body.error ?? "Failed to create manager");
       return;
     }
-    setSuccess(`Created ${email}. Share the temp password with the manager.`);
+    setSuccess(`Created ${email}. Share the password with the manager.`);
     setEmail("");
     setPassword("");
     router.refresh();
@@ -44,20 +44,13 @@ export function NewManagerForm({ stores }: { stores: Pick<Store, "id" | "code" |
         <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1" />
       </label>
       <label className="block">
-        <span className="text-sm font-medium">Temp password</span>
+        <span className="text-sm font-medium">Password</span>
         <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="mt-1" />
       </label>
       <label className="block">
         <span className="text-sm font-medium">Store</span>
-        <select
-          value={storeId}
-          onChange={(e) => setStoreId(e.target.value)}
-          className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm"
-          required
-        >
-          {stores.map((s) => (
-            <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
-          ))}
+        <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" required>
+          {stores.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
         </select>
       </label>
       <Button type="submit" disabled={busy}>{busy ? "Creating…" : "Create manager"}</Button>

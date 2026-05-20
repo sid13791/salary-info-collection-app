@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Packer } from "@/lib/supabase/types";
+import type { Packer } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { IFSC_REGEX, ACCOUNT_REGEX, PHONE_REGEX } from "@/lib/validators";

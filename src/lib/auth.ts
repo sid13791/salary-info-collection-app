@@ -1,34 +1,50 @@
 import { redirect } from "next/navigation";
-import { getServerSupabase } from "@/lib/supabase/server";
-import type { AppUser } from "@/lib/supabase/types";
+import { getCurrentUser } from "./session";
+import type { User } from "./db";
 
-/** Server-side: fetch current app user or redirect to /login. */
-export async function requireUser(): Promise<AppUser> {
-  const supabase = getServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+/** Server-side: return current user or redirect to /login. */
+export function requireUser(): User {
+  const user = getCurrentUser();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("app_users")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile || !profile.is_active) {
-    await supabase.auth.signOut();
-    redirect("/login");
-  }
-  return profile;
+  return user;
 }
 
-export async function requireAdmin(): Promise<AppUser> {
-  const profile = await requireUser();
-  if (profile.role !== "admin") redirect("/manager");
-  return profile;
+export function requireAdmin(): User {
+  const user = requireUser();
+  if (user.role !== "admin") redirect("/manager");
+  return user;
 }
 
-export async function requireManager(): Promise<AppUser> {
-  const profile = await requireUser();
-  if (profile.role !== "manager") redirect("/admin");
-  return profile;
+export function requireManager(): User {
+  const user = requireUser();
+  if (user.role !== "manager") redirect("/admin");
+  return user;
+}
+
+/** For API routes — returns user or throws Response. */
+export function apiRequireAdmin(): User {
+  const user = getCurrentUser();
+  if (!user) throw apiError(401, "Unauthorized");
+  if (user.role !== "admin") throw apiError(403, "Forbidden");
+  return user;
+}
+
+export function apiRequireManager(): User {
+  const user = getCurrentUser();
+  if (!user) throw apiError(401, "Unauthorized");
+  if (user.role !== "manager") throw apiError(403, "Forbidden");
+  return user;
+}
+
+export function apiRequireUser(): User {
+  const user = getCurrentUser();
+  if (!user) throw apiError(401, "Unauthorized");
+  return user;
+}
+
+function apiError(status: number, message: string): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 }

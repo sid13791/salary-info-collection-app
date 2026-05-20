@@ -1,38 +1,36 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getDb, getOpenCycle, getStores, rows } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 import { CycleControls } from "./CycleControls";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
-  await requireAdmin();
-  const supabase = getServerSupabase();
+export default function AdminDashboard() {
+  requireAdmin();
+  const db = getDb();
+  const cycle = getOpenCycle();
+  const stores = getStores();
 
-  const [{ data: cycle }, { data: stores }, { count: activePackers }, { count: missing }] = await Promise.all([
-    supabase.from("cycles").select("*").eq("status", "open").maybeSingle(),
-    supabase.from("stores").select("*").order("code"),
-    supabase.from("packers").select("*", { count: "exact", head: true }).eq("is_active", true),
-    supabase.from("packers").select("*", { count: "exact", head: true })
-      .eq("is_active", true).eq("bank_details_status", "missing"),
-  ]);
+  const counts = rows<{ store_id: string; total: number; missing: number; filled: number }>(
+    db.prepare(`
+      SELECT
+        store_id,
+        COUNT(*) AS total,
+        SUM(CASE WHEN bank_details_status = 'missing' THEN 1 ELSE 0 END) AS missing,
+        SUM(CASE WHEN bank_details_status = 'provided' THEN 1 ELSE 0 END) AS filled
+      FROM packers
+      WHERE is_active = 1
+      GROUP BY store_id
+    `).all(),
+  );
+  const countsByStore = new Map(counts.map((c) => [c.store_id, c]));
 
-  // Per-store counts
-  const { data: perStore } = await supabase
-    .from("packers")
-    .select("store_id, is_active, bank_details_status");
-
-  const counts = new Map<string, { total: number; missing: number; filled: number }>();
-  for (const p of perStore ?? []) {
-    if (!p.is_active) continue;
-    const c = counts.get(p.store_id) ?? { total: 0, missing: 0, filled: 0 };
-    c.total += 1;
-    if (p.bank_details_status === "missing") c.missing += 1;
-    else c.filled += 1;
-    counts.set(p.store_id, c);
-  }
+  const totals = counts.reduce(
+    (acc, c) => ({ active: acc.active + c.total, missing: acc.missing + c.missing }),
+    { active: 0, missing: 0 },
+  );
 
   return (
     <div className="min-h-screen">
@@ -42,14 +40,12 @@ export default async function AdminDashboard() {
       </Header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 space-y-6">
-        <section>
-          <CycleControls cycle={cycle} />
-        </section>
+        <section><CycleControls cycle={cycle} /></section>
 
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="Active packers" value={activePackers ?? 0} />
-          <Stat label="Stores" value={stores?.length ?? 0} />
-          <Stat label="Bank details missing" value={missing ?? 0} tone={missing && missing > 0 ? "warning" : "default"} />
+          <Stat label="Active packers" value={totals.active} />
+          <Stat label="Stores" value={stores.length} />
+          <Stat label="Bank details missing" value={totals.missing} tone={totals.missing > 0 ? "warning" : "default"} />
           <Stat label="Cycle status" value={cycle ? "OPEN" : "CLOSED"} tone={cycle ? "success" : "muted"} />
         </section>
 
@@ -74,8 +70,8 @@ export default async function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {(stores ?? []).map((s) => {
-                  const c = counts.get(s.id) ?? { total: 0, missing: 0, filled: 0 };
+                {stores.map((s) => {
+                  const c = countsByStore.get(s.id) ?? { total: 0, missing: 0, filled: 0 };
                   return (
                     <tr key={s.id} className="border-t">
                       <td className="px-3 py-2 font-mono">{s.code}</td>
@@ -83,21 +79,15 @@ export default async function AdminDashboard() {
                       <td className="px-3 py-2 text-right">{c.total}</td>
                       <td className="px-3 py-2 text-right">{c.filled}</td>
                       <td className="px-3 py-2 text-right">
-                        {c.missing > 0 ? (
-                          <Badge variant="warning">{c.missing}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
+                        {c.missing > 0 ? <Badge variant="warning">{c.missing}</Badge> : <span className="text-muted-foreground">0</span>}
                       </td>
                     </tr>
                   );
                 })}
-                {(stores ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                      No stores yet. Add stores via the SQL editor or seed file.
-                    </td>
-                  </tr>
+                {stores.length === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                    No stores yet. Add stores via the SQL editor or seed script.
+                  </td></tr>
                 )}
               </tbody>
             </table>
