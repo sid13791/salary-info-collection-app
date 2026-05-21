@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "project_name": "Salary Info Collection App",
+  "project_type": "brownfield-bootstrap",
+  "granularity": "phase",
+  "commit_docs": true,
+  "yolo_mode": false,
+  "agents": {
+    "default_runtime": "claude",
+    "researcher_model": "",
+    "synthesizer_model": "",
+    "roadmapper_model": ""
+  },
+  "notes": "Bootstrapped from existing design spec at C:/Users/2750834/.claude/plans/i-want-to-create-hidden-glade.md after v1 was shipped. Phases 1-3 are retroactive (already complete); Phase 4+ are forward-looking v1.1 work."
+}
