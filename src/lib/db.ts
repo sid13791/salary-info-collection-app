@@ -127,6 +127,9 @@ export function getLatestClosedCycle(): Cycle | null {
     getDb().prepare("SELECT * FROM cycles WHERE status = 'closed' ORDER BY closed_at DESC LIMIT 1").get(),
   );
 }
+export function getAllCycles(): Cycle[] {
+  return rows<Cycle>(getDb().prepare("SELECT * FROM cycles ORDER BY month DESC").all());
+}
 export function getPackerById(id: string): Packer | null {
   return row<Packer>(getDb().prepare("SELECT * FROM packers WHERE id = ?").get(id));
 }

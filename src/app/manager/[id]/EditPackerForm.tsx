@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { IFSC_REGEX, ACCOUNT_REGEX, PHONE_REGEX } from "@/lib/validators";
 
-export function EditPackerForm({ packer }: { packer: Packer }) {
+export function EditPackerForm({
+  packer,
+  backHref = "/manager",
+}: {
+  packer: Packer;
+  /** Where to navigate after a successful save. Default `/manager`. */
+  backHref?: string;
+}) {
   const router = useRouter();
   const [bank, setBank] = useState(packer.bank_account_no ?? "");
   const [bankConfirm, setBankConfirm] = useState(packer.bank_account_no ?? "");
@@ -38,7 +45,7 @@ export function EditPackerForm({ packer }: { packer: Packer }) {
       setError(body.error ?? "Save failed");
       return;
     }
-    router.push("/manager");
+    router.push(backHref);
     router.refresh();
   }
 

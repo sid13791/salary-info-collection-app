@@ -19,22 +19,41 @@ export async function POST(req: Request) {
     if (getOpenCycle()) {
       return NextResponse.json({ error: "A cycle is already open" }, { status: 409 });
     }
+
+    // If a cycle for this month already exists (closed earlier), reopen it
+    // instead of inserting a duplicate. Keeps audit history continuous.
+    const existing = db
+      .prepare("SELECT id, status FROM cycles WHERE month = ?")
+      .get(parsed.data.month) as { id: string; status: string } | undefined;
+
+    let action: "reopened" | "created";
     try {
-      db.prepare(`
-        INSERT INTO cycles (id, month, status, opened_by)
-        VALUES (?, ?, 'open', ?)
-      `).run(newId(), parsed.data.month, user.id);
+      if (existing) {
+        db.prepare(`
+          UPDATE cycles
+          SET status = 'open', opened_at = datetime('now'), opened_by = ?,
+              closed_at = NULL, closed_by = NULL
+          WHERE id = ?
+        `).run(user.id, existing.id);
+        action = "reopened";
+      } else {
+        db.prepare(`
+          INSERT INTO cycles (id, month, status, opened_by)
+          VALUES (?, ?, 'open', ?)
+        `).run(newId(), parsed.data.month, user.id);
+        action = "created";
+      }
     } catch (e) {
-      return NextResponse.json({ error: e instanceof Error ? e.message : "Insert failed" }, { status: 400 });
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Open failed" }, { status: 400 });
     }
     insertAudit({
       packer_id: null,
-      field_changed: "cycle_open",
+      field_changed: action === "reopened" ? "cycle_reopen" : "cycle_open",
       old_value: null,
       new_value: parsed.data.month,
       changed_by: user.id,
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, action });
   }
 
   // close

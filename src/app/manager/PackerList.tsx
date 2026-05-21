@@ -6,7 +6,20 @@ import type { Packer } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 
-export function ManagerPackerList({ packers, cycleOpen }: { packers: Packer[]; cycleOpen: boolean }) {
+export function ManagerPackerList({
+  packers,
+  cycleOpen,
+  editHrefBase = "/manager",
+  lockedWhenClosed = true,
+}: {
+  packers: Packer[];
+  cycleOpen: boolean;
+  /** Edit links go to `${editHrefBase}/${packer.id}`. Default `/manager`. */
+  editHrefBase?: string;
+  /** When false, rows stay clickable even if the cycle is closed (admin override). */
+  lockedWhenClosed?: boolean;
+}) {
+  const canClick = cycleOpen || !lockedWhenClosed;
   const [filter, setFilter] = useState("");
   const [onlyMissing, setOnlyMissing] = useState(false);
 
@@ -41,10 +54,10 @@ export function ManagerPackerList({ packers, cycleOpen }: { packers: Packer[]; c
         {filtered.map((p) => (
           <li key={p.id}>
             <Link
-              href={cycleOpen ? `/manager/${p.id}` : "#"}
-              className={`block rounded-md border p-3 ${cycleOpen ? "hover:bg-muted/50" : "opacity-70 cursor-not-allowed"}`}
-              aria-disabled={!cycleOpen}
-              onClick={(e) => { if (!cycleOpen) e.preventDefault(); }}
+              href={canClick ? `${editHrefBase}/${p.id}` : "#"}
+              className={`block rounded-md border p-3 ${canClick ? "hover:bg-muted/50" : "opacity-70 cursor-not-allowed"}`}
+              aria-disabled={!canClick}
+              onClick={(e) => { if (!canClick) e.preventDefault(); }}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { getDb, getOpenCycle, getStores, rows } from "@/lib/db";
+import { getDb, getOpenCycle, getStores, getAllCycles, rows } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 import { CycleControls } from "./CycleControls";
@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   requireAdmin();
   const db = getDb();
   const cycle = getOpenCycle();
+  const pastCycles = getAllCycles().filter((c) => c.status !== "open");
   const stores = getStores();
 
   const counts = rows<{ store_id: string; total: number; missing: number; filled: number }>(
@@ -35,12 +36,13 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen">
       <Header title="Admin Dashboard" subtitle={cycle ? `Cycle ${cycle.month} OPEN` : "No active cycle"}>
-        <Link href="/admin/audit" className="text-sm underline">Audit log</Link>
+        <Link href="/admin/stores" className="text-sm underline">Stores</Link>
         <Link href="/admin/managers" className="text-sm underline">Managers</Link>
+        <Link href="/admin/audit" className="text-sm underline">Audit log</Link>
       </Header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 space-y-6">
-        <section><CycleControls cycle={cycle} /></section>
+        <section><CycleControls cycle={cycle} pastCycles={pastCycles} /></section>
 
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Active packers" value={totals.active} />
@@ -73,9 +75,13 @@ export default function AdminDashboard() {
                 {stores.map((s) => {
                   const c = countsByStore.get(s.id) ?? { total: 0, missing: 0, filled: 0 };
                   return (
-                    <tr key={s.id} className="border-t">
-                      <td className="px-3 py-2 font-mono">{s.code}</td>
-                      <td className="px-3 py-2">{s.name}</td>
+                    <tr key={s.id} className="border-t hover:bg-muted/40">
+                      <td className="px-3 py-2 font-mono">
+                        <Link href={`/admin/stores/${s.id}`} className="underline">{s.code}</Link>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Link href={`/admin/stores/${s.id}`} className="hover:underline">{s.name}</Link>
+                      </td>
                       <td className="px-3 py-2 text-right">{c.total}</td>
                       <td className="px-3 py-2 text-right">{c.filled}</td>
                       <td className="px-3 py-2 text-right">
