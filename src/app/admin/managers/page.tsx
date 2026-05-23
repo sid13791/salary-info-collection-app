@@ -1,7 +1,4 @@
-import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
 import { sql, getStores } from "@/lib/db";
-import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 import { NewManagerForm } from "./NewManagerForm";
 
@@ -16,7 +13,6 @@ interface ManagerRow {
 }
 
 export default async function ManagersPage() {
-  await requireAdmin();
   const stores = await getStores();
   const managers = [...await sql<ManagerRow[]>`
     SELECT u.id, u.email, u.is_active, s.code AS store_code, s.name AS store_name
@@ -27,12 +23,8 @@ export default async function ManagersPage() {
   `];
 
   return (
-    <div className="min-h-screen">
-      <Header title="Managers">
-        <Link href="/admin" className="text-sm underline">Back</Link>
-      </Header>
-      <main className="mx-auto max-w-4xl px-4 py-6 space-y-6">
-        <section className="rounded-md border p-4">
+    <div className="space-y-6">
+      <section className="rounded-md border p-4">
           <h2 className="font-semibold mb-3">Add manager</h2>
           <NewManagerForm stores={stores} />
         </section>
@@ -64,7 +56,6 @@ export default async function ManagersPage() {
             </table>
           </div>
         </section>
-      </main>
     </div>
   );
 }

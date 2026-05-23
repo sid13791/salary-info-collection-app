@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { Header } from "@/components/Header";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +14,6 @@ interface ClosedCycleRow {
 }
 
 export default async function HistoryListPage() {
-  await requireAdmin();
   const cycles = [...await sql<ClosedCycleRow[]>`
     SELECT
       c.id,
@@ -38,12 +35,8 @@ export default async function HistoryListPage() {
   `];
 
   return (
-    <div className="min-h-screen">
-      <Header title="Month-wise History">
-        <Link href="/admin" className="text-sm underline">Back</Link>
-      </Header>
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <p className="text-sm text-muted-foreground mb-3">
+    <div>
+      <p className="text-sm text-muted-foreground mb-3">
           Frozen snapshots taken when each cycle was closed. Bank details shown reflect the state at close.
         </p>
         <div className="border rounded-md overflow-x-auto">
@@ -85,7 +78,6 @@ export default async function HistoryListPage() {
             </tbody>
           </table>
         </div>
-      </main>
     </div>
   );
 }

@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireManager } from "@/lib/auth";
 import { getPackerById, getOpenCycle } from "@/lib/db";
-import { Header } from "@/components/Header";
 import { EditPackerForm } from "./EditPackerForm";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +13,6 @@ export default async function EditPackerPage({ params }: { params: { id: string 
   if (!(await getOpenCycle())) redirect("/manager");
 
   return (
-    <div className="min-h-screen">
-      <Header title={packer.name} subtitle={`Emp ID: ${packer.emp_id}`}>
-        <Link href="/manager" className="text-sm underline">Back</Link>
-      </Header>
-      <main className="mx-auto max-w-md px-3 py-4">
-        <EditPackerForm packer={packer} />
-      </main>
-    </div>
+    <EditPackerForm packer={packer} />
   );
 }

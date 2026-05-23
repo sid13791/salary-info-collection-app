@@ -1,14 +1,11 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
 import { sql, getOpenCycle, getStores, getAllCycles } from "@/lib/db";
-import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 import { CycleControls } from "./CycleControls";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  await requireAdmin();
   const cycle = await getOpenCycle();
   const pastCycles = (await getAllCycles()).filter((c) => c.status !== "open");
   const stores = await getStores();
@@ -31,16 +28,8 @@ export default async function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen">
-      <Header title="Admin Dashboard" subtitle={cycle ? `Cycle ${cycle.month} OPEN` : "No active cycle"}>
-        <Link href="/admin/stores" className="text-sm underline">Stores</Link>
-        <Link href="/admin/managers" className="text-sm underline">Managers</Link>
-        <Link href="/admin/history" className="text-sm underline">History</Link>
-        <Link href="/admin/audit" className="text-sm underline">Audit log</Link>
-      </Header>
-
-      <main className="mx-auto max-w-7xl px-4 py-6 space-y-6">
-        <section><CycleControls cycle={cycle} pastCycles={pastCycles} /></section>
+    <div className="space-y-6">
+      <section><CycleControls cycle={cycle} pastCycles={pastCycles} /></section>
 
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Active packers" value={totals.active} />
@@ -97,7 +86,6 @@ export default async function AdminDashboard() {
             </table>
           </div>
         </section>
-      </main>
     </div>
   );
 }

@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { Header } from "@/components/Header";
 import { NewStoreForm } from "./NewStoreForm";
 import { DeleteStoreButton } from "./DeleteStoreButton";
 
@@ -15,8 +13,6 @@ interface StoreRow {
 }
 
 export default async function StoresPage() {
-  await requireAdmin();
-
   // Counts of active packers per store, joined in one query
   const rows = [...await sql<StoreRow[]>`
     SELECT s.id, s.code, s.name,
@@ -26,13 +22,8 @@ export default async function StoresPage() {
   `];
 
   return (
-    <div className="min-h-screen">
-      <Header title="Stores">
-        <Link href="/admin" className="text-sm underline">Back</Link>
-      </Header>
-
-      <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-        <section className="rounded-md border p-4">
+    <div className="space-y-6">
+      <section className="rounded-md border p-4">
           <h2 className="font-semibold mb-3">Add store</h2>
           <NewStoreForm />
           <p className="text-xs text-muted-foreground mt-2">
@@ -79,7 +70,6 @@ export default async function StoresPage() {
             </table>
           </div>
         </section>
-      </main>
     </div>
   );
 }

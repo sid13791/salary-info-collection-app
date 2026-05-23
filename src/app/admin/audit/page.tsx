@@ -1,7 +1,4 @@
-import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { Header } from "@/components/Header";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +17,6 @@ interface AuditRow {
 }
 
 export default async function AuditLogPage() {
-  await requireAdmin();
   const logs = [...await sql<AuditRow[]>`
     SELECT
       al.*,
@@ -37,12 +33,8 @@ export default async function AuditLogPage() {
   `];
 
   return (
-    <div className="min-h-screen">
-      <Header title="Audit Log">
-        <Link href="/admin" className="text-sm underline">Back</Link>
-      </Header>
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <div className="border rounded-md overflow-x-auto">
+    <div>
+      <div className="border rounded-md overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left">
               <tr>
@@ -79,7 +71,6 @@ export default async function AuditLogPage() {
             </tbody>
           </table>
         </div>
-      </main>
     </div>
   );
 }

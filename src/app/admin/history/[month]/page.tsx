@@ -1,9 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
 import { sql, getStores, type Cycle } from "@/lib/db";
 import { MONTH_REGEX } from "@/lib/validators";
-import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +18,6 @@ interface SnapshotRow {
 }
 
 export default async function HistoryMonthPage({ params }: { params: { month: string } }) {
-  await requireAdmin();
   if (!MONTH_REGEX.test(params.month)) notFound();
 
   const cycle = (await sql<Cycle[]>`
@@ -45,22 +41,20 @@ export default async function HistoryMonthPage({ params }: { params: { month: st
   ).length;
 
   return (
-    <div className="min-h-screen">
-      <Header
-        title={`History · ${cycle.month}`}
-        subtitle={cycle.closed_at ? `Closed ${new Date(cycle.closed_at + "Z").toLocaleString()}` : undefined}
-      >
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {cycle.closed_at ? `Closed ${new Date(cycle.closed_at + "Z").toLocaleString()}` : ""}
+        </p>
         <a
           href={`/api/export?month=${cycle.month}`}
           className="text-sm underline"
         >
           Download export
         </a>
-        <Link href="/admin/history" className="text-sm underline">Back</Link>
-      </Header>
+      </div>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Stat label="Snapshotted packers" value={snapshot.length} />
           <Stat label="Active at close" value={activeCount} />
           <Stat label="With bank details" value={filledCount} />
@@ -113,7 +107,6 @@ export default async function HistoryMonthPage({ params }: { params: { month: st
             </tbody>
           </table>
         </div>
-      </main>
     </div>
   );
 }
