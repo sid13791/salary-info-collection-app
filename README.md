@@ -4,10 +4,8 @@ Web app for collecting packer bank-account details for monthly salary payouts.
 Replaces the manual Excel collection process for a small ops team (1–few admins,
 ~50 store managers, 100–500 active packers).
 
-**Stack:** Next.js 14 (App Router) + TypeScript + Tailwind + **SQLite (node:sqlite, built-in)** + SheetJS.
-Zero external services. Runs entirely on a single machine or server.
-
-> Design spec: `C:/Users/2750834/.claude/plans/i-want-to-create-hidden-glade.md`
+**Stack:** Next.js 14 (App Router) + TypeScript + Tailwind + **Supabase PostgreSQL** + SheetJS.
+Deployed on **Vercel** (auto-deploys from `origin/main`).
 
 ---
 
@@ -22,41 +20,29 @@ Zero external services. Runs entirely on a single machine or server.
 
 ---
 
-## Quick start — no terminal needed
+## Quick start
 
-Double-click **`start-app.bat`** in the project root.
+### Production (Vercel)
 
-First run only:
-- Installs dependencies (~1 min)
-- Initializes the SQLite database
-- Prompts you to create an admin email + password
-- Builds the production bundle (~30 s)
+The app is deployed on Vercel and auto-deploys when code is pushed to `origin/main`.
+Production URL is provided by Vercel.
 
-Every run:
-- Starts the server on http://localhost:3000
-- Opens your default browser automatically
-- Shows your machine's network URL so other devices on the same WiFi (e.g. managers' phones) can also reach the app
+### Local development
 
-Close the black window to stop the app.
+Requires **Node 18+**.
 
-Helpers:
-- `stop-app.bat` — kills any running server processes
-- `reset-admin-password.bat` — interactively reset an admin password
-
----
-
-## Manual setup (terminal)
-
-Requires **Node 24+** (for built-in `node:sqlite`).
+1. Copy `.env.local.example` to `.env.local` and set `DATABASE_URL` (Supabase connection pooler) and `DATABASE_URL_DIRECT` (direct connection for scripts).
+2. Run:
 
 ```bash
 npm install
-npm run db:init                                       # creates ./data/app.db + 2 sample stores + 5 demo packers + opens current cycle
+npm run db:init                                       # applies schema to Supabase
 npm run db:create-admin -- admin@example.com mySecretPw123
-npm run dev                                           # or: npm run build && npm run start
+npm run dev                                           # http://localhost:3000
 ```
 
-Then open http://localhost:3000.
+Helpers:
+- `reset-admin-password.bat` — interactively reset an admin password
 
 ---
 
@@ -78,9 +64,8 @@ Then open http://localhost:3000.
 
 ## Where data lives
 
-- **`./data/app.db`** — SQLite database file. Git-ignored. **Back this up.**
-- WAL files (`app.db-wal`, `app.db-shm`) — created by SQLite during use, also git-ignored.
-- Set `SALARY_DB_PATH` env var to move the DB elsewhere (e.g. a network drive for shared backups).
+- **Supabase PostgreSQL** — all data lives in the hosted Supabase database. Connection details are in `.env.local`.
+- Schema is defined in `db/schema.postgres.sql`.
 
 ---
 
@@ -105,18 +90,21 @@ src/
     manager/                                      mobile-first list + edit (reused by admin store-detail page)
   components/                                     shared UI (Header, Button, Input, Badge)
   lib/
-    db.ts                                         node:sqlite singleton + typed query helpers
+    db.ts                                         postgres.js client + typed query helpers
     session.ts                                    cookie-based sessions backed by sessions table
     password.ts                                   scrypt hash/verify
     auth.ts                                       requireUser / requireAdmin / requireManager guards
     validators.ts                                 IFSC / account / phone regex + Zod schemas
     roster-diff.ts                                pure function: (existing, uploaded) → diff
     excel/                                        parse-roster.ts, generate-export.ts
+  middleware.ts                                    defense-in-depth auth check for /admin, /manager, /api
+  lib/
+    csrf.ts                                       content-type enforcement (CSRF protection)
 db/
-  schema.sql                                      tables, indexes, CHECK constraints
+  schema.postgres.sql                             tables, indexes, CHECK constraints (Supabase)
 scripts/
-  init-db.mjs                                     apply schema + seed sample data
-  create-admin.mjs                                create or reset an admin password
+  init-db.mjs                                     apply schema to Supabase
+  create-admin.mjs                                create or reset an admin password (invalidates sessions)
 docs/
   UAT.md                                          manual user-acceptance test tracker
 start-app.bat / stop-app.bat / reset-admin-password.bat
@@ -133,7 +121,7 @@ start-app.bat / stop-app.bat / reset-admin-password.bat
 | `npm run start`                               | Run production build                        |
 | `npm run typecheck`                           | TypeScript check                            |
 | `npm run test`                                | vitest unit tests                           |
-| `npm run db:init`                             | Apply schema, seed sample data              |
+| `npm run db:init`                             | Apply schema to Supabase                    |
 | `npm run db:create-admin -- email password`   | Create or reset an admin user               |
 
 ---
@@ -141,13 +129,17 @@ start-app.bat / stop-app.bat / reset-admin-password.bat
 ## Security model
 
 - **Password hashing:** `scrypt` from `node:crypto` (memory-hard, no external dep).
-- **Sessions:** opaque random tokens (32 bytes, `httpOnly` cookie), backed by a `sessions` table with a 30-day expiry. Logout deletes the row.
+- **Sessions:** opaque random tokens (32 bytes, `httpOnly` cookie), backed by a `sessions` table with a 30-day expiry. Logout deletes the row. Expired sessions are purged probabilistically.
+- **CSRF protection:** all state-mutating API routes require `Content-Type: application/json`, blocking cross-site form submissions.
+- **Rate limiting:** login endpoint blocks after 5 failed attempts per email within 15 minutes.
+- **Middleware:** Next.js middleware provides defense-in-depth auth checks on `/admin/*`, `/manager/*`, and `/api/*` routes before individual page/route guards execute.
 - **Authorization:** enforced in route handlers + page guards.
   - Managers can only `SELECT/UPDATE` packers where `store_id = me.store_id` AND a cycle is `open`.
   - Admins bypass both checks but every change is still audit-logged with their user ID.
-- **DB-level integrity:** `CHECK` constraints on `packers` reject malformed IFSC / account / phone even if the app code is bypassed.
+- **Bank data masking:** bank account numbers are masked server-side before being passed to client components. Full details are only accessible through the export endpoint.
+- **DB-level integrity:** `CHECK` constraints on `packers` reject malformed IFSC / account / phone even if the app code is bypassed. A partial unique index ensures only one cycle can be open at a time.
+- **Password reset:** resetting an admin password via `create-admin.mjs` invalidates all existing sessions for that user.
 - **No public sign-up.** Only admin creates manager logins.
-- **No external services.** No Supabase, no auth provider, no telemetry.
 
 ---
 
