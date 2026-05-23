@@ -1,12 +1,5 @@
-import { getStores, getOpenCycle } from "@/lib/db";
-import { NewPackerForm } from "./NewPackerForm";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function NewPackerPage() {
-  const stores = await getStores();
-  const cycle = await getOpenCycle();
-  return (
-    <NewPackerForm stores={stores} cycleOpen={!!cycle} />
-  );
+export default function NewPackerPage() {
+  redirect("/admin/roster");
 }
