@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { NewStoreForm } from "./NewStoreForm";
+import { DeleteStoreButton } from "./DeleteStoreButton";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function StoresPage() {
                   <th className="px-3 py-2 font-medium">Code</th>
                   <th className="px-3 py-2 font-medium">Name</th>
                   <th className="px-3 py-2 font-medium text-right">Active packers</th>
+                  <th className="px-3 py-2 font-medium text-right w-20"></th>
                 </tr>
               </thead>
               <tbody>
@@ -61,11 +63,14 @@ export default async function StoresPage() {
                       <Link href={`/admin/stores/${s.id}`} className="hover:underline">{s.name}</Link>
                     </td>
                     <td className="px-3 py-2 text-right">{s.active_packers}</td>
+                    <td className="px-3 py-2 text-right">
+                      <DeleteStoreButton storeId={s.id} storeCode={s.code} />
+                    </td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
+                    <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
                       No stores yet. Add one above.
                     </td>
                   </tr>
