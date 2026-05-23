@@ -13,14 +13,16 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "db:init": "node --experimental-sqlite scripts/init-db.mjs",
-    "db:create-admin": "node --experimental-sqlite scripts/create-admin.mjs"
+    "db:init": "node scripts/init-db.mjs",
+    "db:create-admin": "node scripts/create-admin.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "lucide-react": "^0.460.0",
     "next": "14.2.18",
+    "postgres": "^3.4.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.4",

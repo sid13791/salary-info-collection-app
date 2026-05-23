@@ -6,10 +6,10 @@ import { NewPackerForm } from "./NewPackerForm";
 
 export const dynamic = "force-dynamic";
 
-export default function NewPackerPage() {
-  requireAdmin();
-  const stores = getStores();
-  const cycle = getOpenCycle();
+export default async function NewPackerPage() {
+  await requireAdmin();
+  const stores = await getStores();
+  const cycle = await getOpenCycle();
   return (
     <div className="min-h-screen">
       <Header title="Add Packer" subtitle={cycle ? `Cycle ${cycle.month} OPEN` : "No active cycle"}>

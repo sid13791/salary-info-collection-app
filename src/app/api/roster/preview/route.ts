@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiRequireAdmin } from "@/lib/auth";
-import { getDb, getStores, rows } from "@/lib/db";
+import { sql, getStores } from "@/lib/db";
 import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
 
 const bodySchema = z.object({
@@ -9,17 +9,17 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  apiRequireAdmin();
+  await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
-  const stores = getStores();
+  const stores = await getStores();
   const storeIdToCode = new Map(stores.map((s) => [s.id, s.code]));
   const knownStoreCodes = new Set(stores.map((s) => s.code));
 
-  const dbPackers = rows<{ id: string; emp_id: string; name: string; store_id: string; is_active: number }>(
-    getDb().prepare("SELECT id, emp_id, name, store_id, is_active FROM packers").all(),
-  );
+  const dbPackers = [...await sql<{ id: string; emp_id: string; name: string; store_id: string; is_active: number }[]>`
+    SELECT id, emp_id, name, store_id, is_active FROM packers
+  `];
 
   const existing: ExistingPacker[] = dbPackers.map((p) => ({
     id: p.id,

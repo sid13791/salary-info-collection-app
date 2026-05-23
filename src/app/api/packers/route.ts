@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { apiRequireAdmin } from "@/lib/auth";
-import { getDb, deriveStatus, insertAudit, newId } from "@/lib/db";
+import { sql, deriveStatus, insertAudit, newId } from "@/lib/db";
 import { packerInputSchema, normalizeEmpId, normalizeIfsc, normalizeDigits } from "@/lib/validators";
 
 // Admin: create packer manually
 export async function POST(req: Request) {
-  const user = apiRequireAdmin();
+  const user = await apiRequireAdmin();
   const body = await req.json().catch(() => ({}));
 
   const normalized = {
@@ -24,30 +24,29 @@ export async function POST(req: Request) {
   const id = newId();
 
   try {
-    getDb()
-      .prepare(`
-        INSERT INTO packers (id, emp_id, name, store_id, is_active, bank_account_no, ifsc_code, phone, bank_details_status)
-        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
-      `)
-      .run(
-        id,
-        p.emp_id,
-        p.name,
-        p.store_id,
-        p.bank_account_no ?? null,
-        p.ifsc_code ?? null,
-        p.phone ?? null,
-        status,
-      );
+    await sql`
+      INSERT INTO packers (id, emp_id, name, store_id, is_active, bank_account_no, ifsc_code, phone, bank_details_status)
+      VALUES (
+        ${id},
+        ${p.emp_id},
+        ${p.name},
+        ${p.store_id},
+        1,
+        ${p.bank_account_no ?? null},
+        ${p.ifsc_code ?? null},
+        ${p.phone ?? null},
+        ${status}
+      )
+    `;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
-    if (msg.includes("UNIQUE") || msg.includes("unique")) {
+    if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
       return NextResponse.json({ error: "Emp ID already exists in this store" }, { status: 409 });
     }
     return NextResponse.json({ error: msg || "Insert failed" }, { status: 400 });
   }
 
-  insertAudit({
+  await insertAudit({
     packer_id: id,
     field_changed: "packer_created",
     old_value: null,

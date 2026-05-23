@@ -6,11 +6,11 @@ import { ManagerPackerList } from "./PackerList";
 
 export const dynamic = "force-dynamic";
 
-export default function ManagerDashboard() {
-  const me = requireManager();
-  const store = getStoreById(me.store_id!);
-  const cycle = getOpenCycle();
-  const packers = getActivePackers(me.store_id!);
+export default async function ManagerDashboard() {
+  const me = await requireManager();
+  const store = await getStoreById(me.store_id!);
+  const cycle = await getOpenCycle();
+  const packers = await getActivePackers(me.store_id!);
 
   const cycleOpen = !!cycle;
   const missing = packers.filter((p) => p.bank_details_status === "missing").length;

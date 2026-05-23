@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
-  const user = getUserByEmail(parsed.data.email.toLowerCase().trim());
+  const user = await getUserByEmail(parsed.data.email.toLowerCase().trim());
   if (!user || !user.is_active) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  createSession(user.id);
+  await createSession(user.id);
   return NextResponse.json({
     ok: true,
     role: user.role,

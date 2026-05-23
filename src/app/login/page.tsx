@@ -4,8 +4,8 @@ import { LoginForm } from "./LoginForm";
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
-  const user = getCurrentUser();
+export default async function LoginPage() {
+  const user = await getCurrentUser();
   if (user) {
     redirect(user.role === "admin" ? "/admin" : "/manager");
   }

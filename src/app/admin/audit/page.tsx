@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { getDb, rows } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { Header } from "@/components/Header";
 
 export const dynamic = "force-dynamic";
@@ -19,26 +19,22 @@ interface AuditRow {
   changed_by_email: string | null;
 }
 
-export default function AuditLogPage() {
-  requireAdmin();
-  const logs = rows<AuditRow>(
-    getDb()
-      .prepare(`
-        SELECT
-          al.*,
-          p.emp_id        AS emp_id,
-          p.name          AS packer_name,
-          s.code          AS store_code,
-          u.email         AS changed_by_email
-        FROM audit_log al
-        LEFT JOIN packers p ON p.id = al.packer_id
-        LEFT JOIN stores  s ON s.id = p.store_id
-        LEFT JOIN users   u ON u.id = al.changed_by
-        ORDER BY al.changed_at DESC
-        LIMIT 200
-      `)
-      .all(),
-  );
+export default async function AuditLogPage() {
+  await requireAdmin();
+  const logs = [...await sql<AuditRow[]>`
+    SELECT
+      al.*,
+      p.emp_id        AS emp_id,
+      p.name          AS packer_name,
+      s.code          AS store_code,
+      u.email         AS changed_by_email
+    FROM audit_log al
+    LEFT JOIN packers p ON p.id = al.packer_id
+    LEFT JOIN stores  s ON s.id = p.store_id
+    LEFT JOIN users   u ON u.id = al.changed_by
+    ORDER BY al.changed_at DESC
+    LIMIT 200
+  `];
 
   return (
     <div className="min-h-screen">

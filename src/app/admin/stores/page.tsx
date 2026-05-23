@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { getStores, getDb } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { NewStoreForm } from "./NewStoreForm";
 
@@ -13,18 +13,16 @@ interface StoreRow {
   active_packers: number;
 }
 
-export default function StoresPage() {
-  requireAdmin();
+export default async function StoresPage() {
+  await requireAdmin();
 
   // Counts of active packers per store, joined in one query
-  const rows = getDb()
-    .prepare(`
-      SELECT s.id, s.code, s.name,
-        (SELECT COUNT(*) FROM packers p WHERE p.store_id = s.id AND p.is_active = 1) AS active_packers
-      FROM stores s
-      ORDER BY s.code
-    `)
-    .all() as unknown as StoreRow[];
+  const rows = [...await sql<StoreRow[]>`
+    SELECT s.id, s.code, s.name,
+      (SELECT COUNT(*)::int FROM packers p WHERE p.store_id = s.id AND p.is_active = 1) AS active_packers
+    FROM stores s
+    ORDER BY s.code
+  `];
 
   return (
     <div className="min-h-screen">

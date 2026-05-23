@@ -1,31 +1,28 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { getDb, getOpenCycle, getStores, getAllCycles, rows } from "@/lib/db";
+import { sql, getOpenCycle, getStores, getAllCycles } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 import { CycleControls } from "./CycleControls";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminDashboard() {
-  requireAdmin();
-  const db = getDb();
-  const cycle = getOpenCycle();
-  const pastCycles = getAllCycles().filter((c) => c.status !== "open");
-  const stores = getStores();
+export default async function AdminDashboard() {
+  await requireAdmin();
+  const cycle = await getOpenCycle();
+  const pastCycles = (await getAllCycles()).filter((c) => c.status !== "open");
+  const stores = await getStores();
 
-  const counts = rows<{ store_id: string; total: number; missing: number; filled: number }>(
-    db.prepare(`
-      SELECT
-        store_id,
-        COUNT(*) AS total,
-        SUM(CASE WHEN bank_details_status = 'missing' THEN 1 ELSE 0 END) AS missing,
-        SUM(CASE WHEN bank_details_status = 'provided' THEN 1 ELSE 0 END) AS filled
-      FROM packers
-      WHERE is_active = 1
-      GROUP BY store_id
-    `).all(),
-  );
+  const counts = [...await sql<{ store_id: string; total: number; missing: number; filled: number }[]>`
+    SELECT
+      store_id,
+      COUNT(*)::int AS total,
+      SUM(CASE WHEN bank_details_status = 'missing' THEN 1 ELSE 0 END)::int AS missing,
+      SUM(CASE WHEN bank_details_status = 'provided' THEN 1 ELSE 0 END)::int AS filled
+    FROM packers
+    WHERE is_active = 1
+    GROUP BY store_id
+  `];
   const countsByStore = new Map(counts.map((c) => [c.store_id, c]));
 
   const totals = counts.reduce(
@@ -38,6 +35,7 @@ export default function AdminDashboard() {
       <Header title="Admin Dashboard" subtitle={cycle ? `Cycle ${cycle.month} OPEN` : "No active cycle"}>
         <Link href="/admin/stores" className="text-sm underline">Stores</Link>
         <Link href="/admin/managers" className="text-sm underline">Managers</Link>
+        <Link href="/admin/history" className="text-sm underline">History</Link>
         <Link href="/admin/audit" className="text-sm underline">Audit log</Link>
       </Header>
 

@@ -7,12 +7,12 @@ import { EditPackerForm } from "./EditPackerForm";
 
 export const dynamic = "force-dynamic";
 
-export default function EditPackerPage({ params }: { params: { id: string } }) {
-  const me = requireManager();
-  const packer = getPackerById(params.id);
+export default async function EditPackerPage({ params }: { params: { id: string } }) {
+  const me = await requireManager();
+  const packer = await getPackerById(params.id);
   if (!packer) notFound();
   if (packer.store_id !== me.store_id) redirect("/manager");
-  if (!getOpenCycle()) redirect("/manager");
+  if (!(await getOpenCycle())) redirect("/manager");
 
   return (
     <div className="min-h-screen">

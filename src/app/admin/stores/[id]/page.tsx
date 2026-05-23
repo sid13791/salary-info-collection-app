@@ -8,12 +8,12 @@ import { ManagerPackerList } from "@/app/manager/PackerList";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminStoreDetail({ params }: { params: { id: string } }) {
-  requireAdmin();
-  const store = getStoreById(params.id);
+export default async function AdminStoreDetail({ params }: { params: { id: string } }) {
+  await requireAdmin();
+  const store = await getStoreById(params.id);
   if (!store) notFound();
-  const cycle = getOpenCycle();
-  const packers = getActivePackers(store.id);
+  const cycle = await getOpenCycle();
+  const packers = await getActivePackers(store.id);
   const missing = packers.filter((p) => p.bank_details_status === "missing").length;
 
   return (

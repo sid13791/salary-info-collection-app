@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { getDb, getStores, rows } from "@/lib/db";
+import { sql, getStores } from "@/lib/db";
 import { Header } from "@/components/Header";
 import { Badge } from "@/components/ui/Badge";
 import { NewManagerForm } from "./NewManagerForm";
@@ -15,20 +15,16 @@ interface ManagerRow {
   store_name: string | null;
 }
 
-export default function ManagersPage() {
-  requireAdmin();
-  const stores = getStores();
-  const managers = rows<ManagerRow>(
-    getDb()
-      .prepare(`
-        SELECT u.id, u.email, u.is_active, s.code AS store_code, s.name AS store_name
-        FROM users u
-        LEFT JOIN stores s ON s.id = u.store_id
-        WHERE u.role = 'manager'
-        ORDER BY u.email
-      `)
-      .all(),
-  );
+export default async function ManagersPage() {
+  await requireAdmin();
+  const stores = await getStores();
+  const managers = [...await sql<ManagerRow[]>`
+    SELECT u.id, u.email, u.is_active, s.code AS store_code, s.name AS store_name
+    FROM users u
+    LEFT JOIN stores s ON s.id = u.store_id
+    WHERE u.role = 'manager'
+    ORDER BY u.email
+  `];
 
   return (
     <div className="min-h-screen">

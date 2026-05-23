@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
-import { getDb, getUserById, type User } from "./db";
+import { sql, getUserById, type User } from "./db";
 
 const COOKIE_NAME = "salary_session";
 const SESSION_TTL_DAYS = 30;
@@ -17,12 +17,15 @@ function genToken(): string {
 }
 
 /** Create a new session, set the cookie, return the token. */
-export function createSession(userId: string): string {
+export async function createSession(userId: string): Promise<string> {
   const token = genToken();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86400 * 1000).toISOString();
-  getDb()
-    .prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
-    .run(token, userId, expiresAt);
+  const expiresAt = new Date(
+    Date.now() + SESSION_TTL_DAYS * 86400 * 1000,
+  ).toISOString();
+  await sql`
+    INSERT INTO sessions (token, user_id, expires_at)
+    VALUES (${token}, ${userId}, ${expiresAt})
+  `;
   cookies().set({
     name: COOKIE_NAME,
     value: token,
@@ -36,33 +39,34 @@ export function createSession(userId: string): string {
 }
 
 /** Read the current session user, or null. Verifies token + not expired. */
-export function getCurrentUser(): User | null {
+export async function getCurrentUser(): Promise<User | null> {
   const token = cookies().get(COOKIE_NAME)?.value;
   if (!token) return null;
 
-  const row = getDb()
-    .prepare("SELECT * FROM sessions WHERE token = ?")
-    .get(token) as SessionRow | undefined;
+  const rows = await sql<SessionRow[]>`
+    SELECT * FROM sessions WHERE token = ${token}
+  `;
+  const row = rows[0];
   if (!row) return null;
   if (new Date(row.expires_at).getTime() < Date.now()) {
-    getDb().prepare("DELETE FROM sessions WHERE token = ?").run(token);
+    await sql`DELETE FROM sessions WHERE token = ${token}`;
     return null;
   }
-  const user = getUserById(row.user_id);
+  const user = await getUserById(row.user_id);
   if (!user || !user.is_active) return null;
   return user;
 }
 
 /** Destroy the current session and clear the cookie. */
-export function destroySession(): void {
+export async function destroySession(): Promise<void> {
   const token = cookies().get(COOKIE_NAME)?.value;
   if (token) {
-    getDb().prepare("DELETE FROM sessions WHERE token = ?").run(token);
+    await sql`DELETE FROM sessions WHERE token = ${token}`;
   }
   cookies().set({ name: COOKIE_NAME, value: "", path: "/", maxAge: 0 });
 }
 
 /** Purge expired sessions — call occasionally. */
-export function purgeExpiredSessions(): void {
-  getDb().prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run();
+export async function purgeExpiredSessions(): Promise<void> {
+  await sql`DELETE FROM sessions WHERE expires_at < now()`;
 }

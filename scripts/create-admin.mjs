@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-// Create an admin user. Usage: npm run db:create-admin -- <email> <password>
+// Create or reset an admin user against Supabase Postgres.
+// Usage: npm run db:create-admin -- <email> <password>
 
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
+import postgres from "postgres";
 import { randomUUID, randomBytes, scryptSync } from "node:crypto";
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
 
 const [, , emailArg, passwordArg] = process.argv;
 if (!emailArg || !passwordArg) {
@@ -15,7 +18,12 @@ if (passwordArg.length < 8) {
   process.exit(1);
 }
 
-const DB_PATH = process.env.SALARY_DB_PATH ?? path.join(process.cwd(), "data", "app.db");
+const DATABASE_URL = process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error("DATABASE_URL_DIRECT (or DATABASE_URL) not set. Add it to .env.local.");
+  process.exit(1);
+}
+
 const email = emailArg.toLowerCase().trim();
 
 function hashPassword(pw) {
@@ -24,24 +32,31 @@ function hashPassword(pw) {
   return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
 }
 
-const db = new DatabaseSync(DB_PATH);
-db.exec("PRAGMA foreign_keys = ON;");
+const sql = postgres(DATABASE_URL, { max: 1, idle_timeout: 5 });
 
-const existing = db.prepare("SELECT id, role FROM users WHERE email = ?").get(email);
-if (existing) {
-  if (existing.role !== "admin") {
-    console.error(`User ${email} exists but is a ${existing.role}, not admin.`);
-    process.exit(1);
+try {
+  const existingRows = await sql`SELECT id, role FROM users WHERE email = ${email}`;
+  const existing = existingRows[0];
+
+  if (existing) {
+    if (existing.role !== "admin") {
+      console.error(`User ${email} exists but is a ${existing.role}, not admin.`);
+      process.exit(1);
+    }
+    await sql`
+      UPDATE users
+      SET password_hash = ${hashPassword(passwordArg)}, is_active = 1
+      WHERE email = ${email}
+    `;
+    console.log(`Reset password for existing admin ${email}.`);
+  } else {
+    await sql`
+      INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
+      VALUES (${randomUUID()}, ${email}, ${hashPassword(passwordArg)}, 'admin', NULL, 1, 1)
+    `;
+    console.log(`Created admin ${email}.`);
   }
-  // Reset password
-  db.prepare("UPDATE users SET password_hash = ?, is_active = 1 WHERE email = ?")
-    .run(hashPassword(passwordArg), email);
-  console.log(`Reset password for existing admin ${email}.`);
-} else {
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
-    VALUES (?, ?, ?, 'admin', NULL, 1, 1)
-  `).run(randomUUID(), email, hashPassword(passwordArg));
-  console.log(`Created admin ${email}.`);
+  console.log("You can now sign in at http://localhost:3000/login");
+} finally {
+  await sql.end({ timeout: 5 });
 }
-console.log("You can now sign in at http://localhost:3000/login");

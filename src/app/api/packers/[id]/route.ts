@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiRequireUser } from "@/lib/auth";
-import { getDb, getPackerById, getOpenCycle, deriveStatus, insertAudit } from "@/lib/db";
+import { sql, getPackerById, getOpenCycle, deriveStatus, insertAudit } from "@/lib/db";
 import { ACCOUNT_REGEX, IFSC_REGEX, PHONE_REGEX, normalizeDigits, normalizeIfsc } from "@/lib/validators";
 
 const patchSchema = z.object({
@@ -11,8 +11,8 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const user = apiRequireUser();
-  const packer = getPackerById(params.id);
+  const user = await apiRequireUser();
+  const packer = await getPackerById(params.id);
   if (!packer) return NextResponse.json({ error: "Packer not found" }, { status: 404 });
 
   // Authorization:
@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (packer.store_id !== user.store_id) {
       return NextResponse.json({ error: "Not your store" }, { status: 403 });
     }
-    if (!getOpenCycle()) {
+    if (!(await getOpenCycle())) {
       return NextResponse.json({ error: "No open cycle — edits are locked" }, { status: 403 });
     }
   }
@@ -52,27 +52,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     changes.push({ field: "phone", old: packer.phone, new: phone });
   }
 
-  const db = getDb();
-  db.exec("BEGIN");
   try {
-    db.prepare(`
-      UPDATE packers
-      SET bank_account_no = ?, ifsc_code = ?, phone = ?, bank_details_status = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(bank_account_no, ifsc_code, phone, status, params.id);
+    await sql.begin(async (tx) => {
+      await tx`
+        UPDATE packers
+        SET bank_account_no = ${bank_account_no},
+            ifsc_code = ${ifsc_code},
+            phone = ${phone},
+            bank_details_status = ${status},
+            updated_at = now()
+        WHERE id = ${params.id}
+      `;
 
-    for (const c of changes) {
-      insertAudit({
-        packer_id: params.id,
-        field_changed: c.field,
-        old_value: c.old,
-        new_value: c.new,
-        changed_by: user.id,
-      });
-    }
-    db.exec("COMMIT");
+      for (const c of changes) {
+        await tx`
+          INSERT INTO audit_log (packer_id, field_changed, old_value, new_value, changed_by)
+          VALUES (${params.id}, ${c.field}, ${c.old}, ${c.new}, ${user.id})
+        `;
+      }
+    });
   } catch (e) {
-    db.exec("ROLLBACK");
     return NextResponse.json({ error: e instanceof Error ? e.message : "Update failed" }, { status: 400 });
   }
 

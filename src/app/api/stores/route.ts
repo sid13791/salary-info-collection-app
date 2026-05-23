@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiRequireAdmin } from "@/lib/auth";
-import { getDb, newId } from "@/lib/db";
+import { sql, newId } from "@/lib/db";
 import { normalizeStoreCode, STORE_CODE_REGEX } from "@/lib/validators";
 
 const bodySchema = z.object({
@@ -10,7 +10,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  apiRequireAdmin();
+  await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
@@ -25,12 +25,10 @@ export async function POST(req: Request) {
   const name = parsed.data.name.trim();
 
   try {
-    getDb()
-      .prepare("INSERT INTO stores (id, code, name) VALUES (?, ?, ?)")
-      .run(newId(), code, name);
+    await sql`INSERT INTO stores (id, code, name) VALUES (${newId()}, ${code}, ${name})`;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
-    if (msg.includes("UNIQUE") || msg.includes("unique")) {
+    if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
       return NextResponse.json({ error: `Store code "${code}" already exists` }, { status: 409 });
     }
     return NextResponse.json({ error: msg || "Create failed" }, { status: 400 });
