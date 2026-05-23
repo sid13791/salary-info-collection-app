@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiRequireUser } from "@/lib/auth";
 import { sql, getPackerById, getOpenCycle, deriveStatus, insertAudit } from "@/lib/db";
 import { ACCOUNT_REGEX, IFSC_REGEX, PHONE_REGEX, normalizeDigits, normalizeIfsc } from "@/lib/validators";
+import { requireJsonContentType } from "@/lib/csrf";
 
 const patchSchema = z.object({
   bank_account_no: z.string().regex(ACCOUNT_REGEX, "Account number must be 9–18 digits"),
@@ -11,6 +12,9 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   const user = await apiRequireUser();
   const packer = await getPackerById(params.id);
   if (!packer) return NextResponse.json({ error: "Packer not found" }, { status: 404 });
@@ -72,7 +76,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Update failed" }, { status: 400 });
+    return NextResponse.json({ error: "Update failed" }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true });

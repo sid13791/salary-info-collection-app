@@ -5,10 +5,10 @@ import {
   sql,
   getOpenCycle,
   getActivePackers,
-  insertAudit,
   newId,
 } from "@/lib/db";
 import { MONTH_REGEX } from "@/lib/validators";
+import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("open"), month: z.string().regex(MONTH_REGEX) }),
@@ -16,57 +16,65 @@ const bodySchema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(req: Request) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   const user = await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success)
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
   if (parsed.data.action === "open") {
-    if (await getOpenCycle()) {
-      return NextResponse.json(
-        { error: "A cycle is already open" },
-        { status: 409 },
-      );
-    }
-
-    // If a cycle for this month already exists (closed earlier), reopen it
-    // instead of inserting a duplicate. Keeps audit history continuous.
-    const existingRows = await sql<{ id: string; status: string }[]>`
-      SELECT id, status FROM cycles WHERE month = ${parsed.data.month}
-    `;
-    const existing = existingRows[0];
-
+    const month = parsed.data.month;
+    // Use a transaction to atomically check + open. The partial unique index
+    // (cycles_one_open_idx) prevents two open cycles at the database level.
     let action: "reopened" | "created";
     try {
-      if (existing) {
-        await sql`
-          UPDATE cycles
-          SET status = 'open', opened_at = now(), opened_by = ${user.id},
-              closed_at = NULL, closed_by = NULL
-          WHERE id = ${existing.id}
+      await sql.begin(async (tx) => {
+        const [alreadyOpen] = await tx`
+          SELECT id FROM cycles WHERE status = 'open' FOR UPDATE
         `;
-        action = "reopened";
-      } else {
-        await sql`
-          INSERT INTO cycles (id, month, status, opened_by)
-          VALUES (${newId()}, ${parsed.data.month}, 'open', ${user.id})
+        if (alreadyOpen) throw new Error("already_open");
+
+        const existingRows = await tx<{ id: string }[]>`
+          SELECT id FROM cycles WHERE month = ${month}
         `;
-        action = "created";
-      }
+        const existing = existingRows[0];
+
+        if (existing) {
+          await tx`
+            UPDATE cycles
+            SET status = 'open', opened_at = now(), opened_by = ${user.id},
+                closed_at = NULL, closed_by = NULL
+            WHERE id = ${existing.id}
+          `;
+          action = "reopened";
+        } else {
+          await tx`
+            INSERT INTO cycles (id, month, status, opened_by)
+            VALUES (${newId()}, ${month}, 'open', ${user.id})
+          `;
+          action = "created";
+        }
+
+        await tx`
+          INSERT INTO audit_log (packer_id, field_changed, old_value, new_value, changed_by)
+          VALUES (NULL, ${action === "reopened" ? "cycle_reopen" : "cycle_open"}, NULL, ${month}, ${user.id})
+        `;
+      });
     } catch (e) {
+      if (e instanceof Error && e.message === "already_open") {
+        return NextResponse.json(
+          { error: "A cycle is already open" },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
         { error: "Open failed" },
         { status: 400 },
       );
     }
-    await insertAudit({
-      packer_id: null,
-      field_changed: action === "reopened" ? "cycle_reopen" : "cycle_open",
-      old_value: null,
-      new_value: parsed.data.month,
-      changed_by: user.id,
-    });
-    return NextResponse.json({ ok: true, action });
+    return NextResponse.json({ ok: true, action: action! });
   }
 
   // close
@@ -105,6 +113,11 @@ export async function POST(req: Request) {
         SET status = 'closed', closed_at = now(), closed_by = ${user.id}
         WHERE id = ${open.id}
       `;
+      // Audit log inside the transaction (WR-07)
+      await tx`
+        INSERT INTO audit_log (packer_id, field_changed, old_value, new_value, changed_by)
+        VALUES (NULL, 'cycle_close', ${open.month}, NULL, ${user.id})
+      `;
     });
   } catch (e) {
     return NextResponse.json(
@@ -113,12 +126,5 @@ export async function POST(req: Request) {
     );
   }
 
-  await insertAudit({
-    packer_id: null,
-    field_changed: "cycle_close",
-    old_value: open.month,
-    new_value: null,
-    changed_by: user.id,
-  });
   return NextResponse.json({ ok: true, snapshotted: packers.length });
 }

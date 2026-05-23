@@ -48,7 +48,9 @@ try {
       SET password_hash = ${hashPassword(passwordArg)}, is_active = 1
       WHERE email = ${email}
     `;
-    console.log(`Reset password for existing admin ${email}.`);
+    // Invalidate all existing sessions for this user (WR-03)
+    await sql`DELETE FROM sessions WHERE user_id = ${existing.id}`;
+    console.log(`Reset password for existing admin ${email}. All existing sessions invalidated.`);
   } else {
     await sql`
       INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)

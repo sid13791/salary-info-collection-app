@@ -54,6 +54,10 @@ export async function getCurrentUser(): Promise<User | null> {
   }
   const user = await getUserById(row.user_id);
   if (!user || !user.is_active) return null;
+
+  // Probabilistically purge expired sessions (~1% of requests)
+  if (Math.random() < 0.01) purgeExpiredSessions().catch(() => {});
+
   return user;
 }
 
@@ -69,4 +73,9 @@ export async function destroySession(): Promise<void> {
 /** Purge expired sessions — call occasionally. */
 export async function purgeExpiredSessions(): Promise<void> {
   await sql`DELETE FROM sessions WHERE expires_at < now()`;
+}
+
+/** Destroy all sessions for a given user (e.g. on password reset). */
+export async function destroyUserSessions(userId: string): Promise<void> {
+  await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
 }

@@ -3,12 +3,16 @@ import { z } from "zod";
 import { apiRequireAdmin } from "@/lib/auth";
 import { sql, getStores } from "@/lib/db";
 import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
+import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
   rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_code: z.string() })),
 });
 
 export async function POST(req: Request) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });

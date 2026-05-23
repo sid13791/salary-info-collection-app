@@ -3,12 +3,16 @@ import { z } from "zod";
 import { apiRequireAdmin } from "@/lib/auth";
 import { sql, getStores, getOpenCycle, insertAudit, newId } from "@/lib/db";
 import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
+import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
   rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_code: z.string() })),
 });
 
 export async function POST(req: Request) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   const user = await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
@@ -39,6 +43,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid rows present; cannot commit", details: diff.invalidRows }, { status: 400 });
   }
 
+  // Reject if store migrations exist — these need manual resolution
+  if (diff.storeMigrations.length > 0) {
+    return NextResponse.json({
+      error: "Store migrations detected — resolve manually before committing",
+      details: diff.storeMigrations.map((m) => ({
+        emp_id: m.uploaded.emp_id,
+        from: m.existing.store_code,
+        to: m.uploaded.store_code,
+      })),
+    }, { status: 400 });
+  }
+
   let created = 0;
   let reactivated = 0;
   let deactivated = 0;
@@ -48,7 +64,7 @@ export async function POST(req: Request) {
       for (const r of diff.newPackers) {
         await tx`
           INSERT INTO packers (id, emp_id, name, store_id, is_active, bank_details_status)
-          VALUES (${newId()}, ${r.emp_id}, ${r.name}, ${storeCodeToId.get(r.store_code)!}, 1, 'missing')
+          VALUES (${newId()}, ${r.emp_id}, ${r.name}, ${(() => { const sid = storeCodeToId.get(r.store_code); if (!sid) throw new Error(`Store code not found: ${r.store_code}`); return sid; })()}, 1, 'missing')
         `;
         created++;
       }
@@ -76,7 +92,7 @@ export async function POST(req: Request) {
       }
     });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Commit failed" }, { status: 500 });
+    return NextResponse.json({ error: "Commit failed" }, { status: 500 });
   }
 
   await insertAudit({

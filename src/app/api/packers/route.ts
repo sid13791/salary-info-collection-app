@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import { apiRequireAdmin } from "@/lib/auth";
 import { sql, deriveStatus, insertAudit, newId } from "@/lib/db";
 import { packerInputSchema, normalizeEmpId, normalizeIfsc, normalizeDigits } from "@/lib/validators";
+import { requireJsonContentType } from "@/lib/csrf";
 
 // Admin: create packer manually
 export async function POST(req: Request) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   const user = await apiRequireAdmin();
   const body = await req.json().catch(() => ({}));
 

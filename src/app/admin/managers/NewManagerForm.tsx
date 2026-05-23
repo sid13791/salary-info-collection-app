@@ -45,7 +45,7 @@ export function NewManagerForm({ stores }: { stores: Pick<Store, "id" | "code" |
       </label>
       <label className="block">
         <span className="text-sm font-medium">Password</span>
-        <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="mt-1" />
+        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="mt-1" />
       </label>
       <label className="block">
         <span className="text-sm font-medium">Store</span>

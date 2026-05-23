@@ -8,7 +8,11 @@ export function Header({ title, subtitle, children }: { title: string; subtitle?
   const router = useRouter();
 
   async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
     router.push("/login");
     router.refresh();
   }

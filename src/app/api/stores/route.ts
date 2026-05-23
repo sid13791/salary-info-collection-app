@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiRequireAdmin } from "@/lib/auth";
 import { sql, newId } from "@/lib/db";
 import { normalizeStoreCode, STORE_CODE_REGEX } from "@/lib/validators";
+import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
   code: z.string().min(1).max(16),
@@ -10,6 +11,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {

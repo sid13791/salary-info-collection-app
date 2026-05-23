@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiRequireAdmin } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { requireJsonContentType } from "@/lib/csrf";
 
 export async function DELETE(
   _req: Request,

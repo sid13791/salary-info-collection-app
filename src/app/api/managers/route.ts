@@ -3,14 +3,18 @@ import { z } from "zod";
 import { apiRequireAdmin } from "@/lib/auth";
 import { sql, getStoreById, newId } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  store_id: z.string().min(1),
+  store_id: z.string().uuid(),
 });
 
 export async function POST(req: Request) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   await apiRequireAdmin();
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });

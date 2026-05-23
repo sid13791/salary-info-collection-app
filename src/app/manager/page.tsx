@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireManager } from "@/lib/auth";
 import { getStoreById, getOpenCycle, getActivePackers } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
@@ -5,11 +6,24 @@ import { ManagerPackerList } from "./PackerList";
 
 export const dynamic = "force-dynamic";
 
+function maskAccount(acc: string): string {
+  if (acc.length <= 4) return acc;
+  return "X".repeat(acc.length - 4) + acc.slice(-4);
+}
+
 export default async function ManagerDashboard() {
   const me = await requireManager();
-  const store = await getStoreById(me.store_id!);
+  if (!me.store_id) redirect("/login");
+
+  const store = await getStoreById(me.store_id);
   const cycle = await getOpenCycle();
-  const packers = await getActivePackers(me.store_id!);
+  const rawPackers = await getActivePackers(me.store_id);
+
+  // Mask sensitive bank details before passing to client component (CR-04)
+  const packers = rawPackers.map((p) => ({
+    ...p,
+    bank_account_no: p.bank_account_no ? maskAccount(p.bank_account_no) : null,
+  }));
 
   const cycleOpen = !!cycle;
   const missing = packers.filter((p) => p.bank_details_status === "missing").length;
