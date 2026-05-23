@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { parseRosterBuffer } from "@/lib/excel/parse-roster";
 import { Button } from "@/components/ui/Button";
+import { InlinePackerForm } from "./InlinePackerForm";
 
 interface DiffPreview {
   matched: number;
@@ -14,13 +15,19 @@ interface DiffPreview {
   invalidRows: Array<{ rowIndex: number; reason: string }>;
 }
 
-export function RosterUploader() {
+interface RosterUploaderProps {
+  stores: Array<{ id: string; code: string; name: string }>;
+  cycleOpen: boolean;
+}
+
+export function RosterUploader({ stores, cycleOpen }: RosterUploaderProps) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DiffPreview | null>(null);
   const [parsedRows, setParsedRows] = useState<unknown[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
 
   async function handleFile(f: File) {
     setError(null);
@@ -88,6 +95,21 @@ export function RosterUploader() {
           {file ? `Selected: ${file.name}` : "Click to choose an .xlsx file (or drag here)"}
         </span>
       </label>
+
+      <button
+        type="button"
+        onClick={() => setShowManualForm((v) => !v)}
+        className="text-sm text-muted-foreground underline hover:text-foreground transition"
+      >
+        {showManualForm ? "Hide manual form" : "Need to add just one packer? Add manually"}
+      </button>
+
+      {showManualForm && (
+        <div className="rounded-md border p-4">
+          <div className="text-sm font-medium mb-3">Add a single packer</div>
+          <InlinePackerForm stores={stores} cycleOpen={cycleOpen} />
+        </div>
+      )}
 
       {error && <div className="rounded-md border border-danger/30 bg-danger/5 text-danger p-3 text-sm">{error}</div>}
 
