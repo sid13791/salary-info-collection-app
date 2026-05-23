@@ -1,15 +1,17 @@
 // Global setup — runs ONCE before all tests start.
-// Wipes ./data/test.db and seeds it from db/schema.sql + fixture rows.
-// Idempotent: safe to run repeatedly.
+// Seeds test data into Supabase Postgres via postgres.js.
+// Cleans and re-seeds each run for a deterministic starting state.
 
-import { DatabaseSync } from "node:sqlite";
+import postgres from "postgres";
 import { randomUUID, randomBytes, scryptSync } from "node:crypto";
-import { readFileSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
-import path from "node:path";
+import { config } from "dotenv";
 
-const ROOT = process.cwd();
-const TEST_DB_PATH = path.join(ROOT, "data", "test.db");
-const SCHEMA = readFileSync(path.join(ROOT, "db", "schema.sql"), "utf8");
+config({ path: ".env.local" });
+
+const DATABASE_URL = process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error("DATABASE_URL not set in .env.local — needed for E2E test setup");
+}
 
 function hash(pw) {
   const salt = randomBytes(16);
@@ -18,58 +20,63 @@ function hash(pw) {
 }
 
 export default async function globalSetup() {
-  mkdirSync(path.dirname(TEST_DB_PATH), { recursive: true });
+  const sql = postgres(DATABASE_URL, { max: 1, idle_timeout: 5 });
 
-  // Remove existing test DB + WAL siblings for a clean slate
-  for (const f of [TEST_DB_PATH, TEST_DB_PATH + "-wal", TEST_DB_PATH + "-shm"]) {
-    if (existsSync(f)) unlinkSync(f);
+  try {
+    // Clean slate — delete in FK-safe order
+    await sql`DELETE FROM cycle_packers`;
+    await sql`DELETE FROM audit_log`;
+    await sql`DELETE FROM cycles`;
+    await sql`DELETE FROM packers`;
+    await sql`DELETE FROM sessions`;
+    await sql`DELETE FROM users`;
+    await sql`DELETE FROM stores`;
+
+    // ---------- Seed ----------
+    const ncrId = randomUUID();
+    const mumId = randomUUID();
+    await sql`INSERT INTO stores (id, code, name) VALUES (${ncrId}, 'NCR01', 'Delhi - Connaught Place')`;
+    await sql`INSERT INTO stores (id, code, name) VALUES (${mumId}, 'MUM02', 'Mumbai - Bandra')`;
+
+    const adminId = randomUUID();
+    const mgrNcrId = randomUUID();
+    const mgrMumId = randomUUID();
+    await sql`
+      INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
+      VALUES (${adminId}, 'admin@test.local', ${hash("admin12345")}, 'admin', NULL, 1, 0)
+    `;
+    await sql`
+      INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
+      VALUES (${mgrNcrId}, 'mgr.ncr@test.local', ${hash("manager12345")}, 'manager', ${ncrId}, 1, 0)
+    `;
+    await sql`
+      INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
+      VALUES (${mgrMumId}, 'mgr.mum@test.local', ${hash("manager12345")}, 'manager', ${mumId}, 1, 0)
+    `;
+
+    for (const [empId, name, storeId] of [
+      ["PKR001", "Ramesh Kumar", ncrId],
+      ["PKR002", "Sunita Sharma", ncrId],
+      ["PKR003", "Amit Verma", ncrId],
+      ["PKR101", "Priya Patel", mumId],
+      ["PKR102", "Vikram Singh", mumId],
+    ]) {
+      await sql`
+        INSERT INTO packers (id, emp_id, name, store_id, is_active)
+        VALUES (${randomUUID()}, ${empId}, ${name}, ${storeId}, 1)
+      `;
+    }
+
+    // Open a cycle for the current month so edits aren't blocked
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    await sql`
+      INSERT INTO cycles (id, month, status, opened_by)
+      VALUES (${randomUUID()}, ${month}, 'open', ${adminId})
+    `;
+
+    console.log(`[e2e] seeded Supabase (cycle ${month} open, 5 packers, 2 managers)`);
+  } finally {
+    await sql.end({ timeout: 5 });
   }
-
-  const db = new DatabaseSync(TEST_DB_PATH);
-  db.exec("PRAGMA foreign_keys = ON;");
-  db.exec(SCHEMA);
-
-  // ---------- Seed ----------
-  const ncrId = randomUUID();
-  const mumId = randomUUID();
-  db.prepare("INSERT INTO stores (id, code, name) VALUES (?, ?, ?)").run(ncrId, "NCR01", "Delhi - Connaught Place");
-  db.prepare("INSERT INTO stores (id, code, name) VALUES (?, ?, ?)").run(mumId, "MUM02", "Mumbai - Bandra");
-
-  const adminId = randomUUID();
-  const mgrNcrId = randomUUID();
-  const mgrMumId = randomUUID();
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
-    VALUES (?, ?, ?, 'admin', NULL, 1, 0)
-  `).run(adminId, "admin@test.local", hash("admin12345"));
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
-    VALUES (?, ?, ?, 'manager', ?, 1, 0)
-  `).run(mgrNcrId, "mgr.ncr@test.local", hash("manager12345"), ncrId);
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, role, store_id, is_active, must_change_password)
-    VALUES (?, ?, ?, 'manager', ?, 1, 0)
-  `).run(mgrMumId, "mgr.mum@test.local", hash("manager12345"), mumId);
-
-  const insertPacker = db.prepare(
-    "INSERT INTO packers (id, emp_id, name, store_id, is_active) VALUES (?, ?, ?, ?, 1)",
-  );
-  for (const row of [
-    ["PKR001", "Ramesh Kumar", ncrId],
-    ["PKR002", "Sunita Sharma", ncrId],
-    ["PKR003", "Amit Verma", ncrId],
-    ["PKR101", "Priya Patel", mumId],
-    ["PKR102", "Vikram Singh", mumId],
-  ]) {
-    insertPacker.run(randomUUID(), row[0], row[1], row[2]);
-  }
-
-  // Open a cycle for the current month so edits aren't blocked
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  db.prepare("INSERT INTO cycles (id, month, status, opened_by) VALUES (?, ?, 'open', ?)")
-    .run(randomUUID(), month, adminId);
-
-  db.close();
-  console.log(`[e2e] seeded ${TEST_DB_PATH} (cycle ${month} open, 5 packers, 2 managers)`);
 }

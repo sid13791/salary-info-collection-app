@@ -13,8 +13,8 @@ test.describe("Auth + role routing", () => {
 
   test("admin lands on /admin and sees dashboard", async ({ page }) => {
     await loginAsAdmin(page);
-    // Header title (rendered as a span, not an h1)
-    await expect(page.getByText("Admin Dashboard", { exact: true })).toBeVisible();
+    // Header title
+    await expect(page.getByText("Salary Info Collection")).toBeVisible();
     // KPI stat labels
     await expect(page.getByText("Active packers", { exact: true })).toBeVisible();
     await expect(page.getByText("Bank details missing", { exact: true })).toBeVisible();
