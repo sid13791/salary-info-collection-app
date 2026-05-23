@@ -50,7 +50,7 @@ fixed_in: ae7e4f0
 **Reviewed:** 2026-05-23
 **Depth:** standard
 **Files Reviewed:** 33
-**Status:** partially_fixed (3 of 13 fixed in ae7e4f0, 10 open)
+**Status:** partially_fixed (5 of 13 resolved: 3 fixed in ae7e4f0, 2 stale findings verified already correct)
 
 ## Summary
 
@@ -60,9 +60,10 @@ However, three critical issues were found: two pages bypass authentication by ca
 
 ## Critical Issues
 
-### CR-01: Export page calls `requireAdmin()` without `await` -- authentication bypass
+### CR-01: Export page calls `requireAdmin()` without `await` -- authentication bypass -- ALREADY FIXED
 
 **File:** `src/app/admin/export/page.tsx:7-9`
+**Note:** Code already has `await requireAdmin()`. Finding was stale.
 **Issue:** `ExportPage` is a regular (non-async) function that calls `requireAdmin()` without `await`. Since `requireAdmin()` is async and uses `redirect()` internally, the redirect never actually executes -- the unresolved Promise is discarded and the page renders for any user. While the `/admin` layout also calls `requireAdmin()`, Next.js does not guarantee layout completion before page rendering in all navigation scenarios (e.g., parallel route resolution, direct deep-linking). This is a defense-in-depth failure that can expose the page to unauthenticated users.
 
 **Fix:**
@@ -75,9 +76,10 @@ export default async function ExportPage() {
 }
 ```
 
-### CR-02: Roster upload page calls `requireAdmin()` without `await` -- authentication bypass
+### CR-02: Roster upload page calls `requireAdmin()` without `await` -- authentication bypass -- ALREADY FIXED
 
 **File:** `src/app/admin/roster/page.tsx:8-9`
+**Note:** Code already has `await requireAdmin()`. Finding was stale.
 **Issue:** Identical to CR-01. `RosterUploadPage` is non-async and calls `requireAdmin()` without `await`. The auth guard is silently skipped. The `RosterUploader` client component renders without any server-side authorization check on this page.
 
 **Fix:**

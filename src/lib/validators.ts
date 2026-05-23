@@ -30,13 +30,6 @@ export const bankDetailsSchema = z.object({
   phone: z.string().regex(PHONE_REGEX, "Phone must be exactly 10 digits"),
 });
 
-// Optional version for partial updates (manager can save bank-only and add phone later)
-export const bankDetailsPartialSchema = z.object({
-  bank_account_no: z.string().regex(ACCOUNT_REGEX).optional().or(z.literal("")),
-  ifsc_code: z.string().regex(IFSC_REGEX).optional().or(z.literal("")),
-  phone: z.string().regex(PHONE_REGEX).optional().or(z.literal("")),
-});
-
 export const packerInputSchema = z.object({
   emp_id: z.string().regex(EMP_ID_REGEX),
   name: z.string().min(1).max(200),

@@ -28,8 +28,8 @@ const email = emailArg.toLowerCase().trim();
 
 function hashPassword(pw) {
   const salt = randomBytes(16);
-  const hash = scryptSync(pw, salt, 64, { N: 16384 });
-  return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
+  const hash = scryptSync(pw, salt, 64, { N: 32768, r: 8, p: 1 });
+  return `scrypt$32768$${salt.toString("hex")}$${hash.toString("hex")}`;
 }
 
 const sql = postgres(DATABASE_URL, { max: 1, idle_timeout: 5 });
