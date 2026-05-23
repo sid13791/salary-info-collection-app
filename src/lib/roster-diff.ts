@@ -61,7 +61,6 @@ export function diffRoster(
   }
 
   const seenInUpload = new Set<string>();
-  const dupesInUpload = new Set<string>();
 
   // Normalize first
   const normalized = uploaded.map((r, i) => ({
@@ -70,16 +69,6 @@ export function diffRoster(
     name: (r.name ?? "").trim(),
     store_code: normalizeStoreCode(r.store_code ?? ""),
   }));
-
-  // Detect duplicates within the upload (same emp_id + store)
-  const uploadKeyCount = new Map<string, number>();
-  for (const r of normalized) {
-    const key = `${r.emp_id}::${r.store_code}`;
-    uploadKeyCount.set(key, (uploadKeyCount.get(key) ?? 0) + 1);
-  }
-  for (const [k, count] of uploadKeyCount) {
-    if (count > 1) dupesInUpload.add(k);
-  }
 
   for (const row of normalized) {
     const upRow: UploadedRow = {
@@ -109,7 +98,7 @@ export function diffRoster(
       continue;
     }
     const key = `${row.emp_id}::${row.store_code}`;
-    if (dupesInUpload.has(key)) {
+    if (seenInUpload.has(key)) {
       result.invalidRows.push({
         row: upRow,
         rowIndex: row.rowIndex,

@@ -4,8 +4,8 @@ import { Header } from "@/components/Header";
 
 export const dynamic = "force-dynamic";
 
-export default function ExportPage() {
-  requireAdmin();
+export default async function ExportPage() {
+  await requireAdmin();
   return (
     <div className="min-h-screen">
       <Header title="Bank Export">

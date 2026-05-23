@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
       return NextResponse.json({ error: "Emp ID already exists in this store" }, { status: 409 });
     }
-    return NextResponse.json({ error: msg || "Insert failed" }, { status: 400 });
+    return NextResponse.json({ error: "Insert failed" }, { status: 400 });
   }
 
   await insertAudit({

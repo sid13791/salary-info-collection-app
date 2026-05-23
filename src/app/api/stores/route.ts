@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     if (msg.includes("UNIQUE") || msg.includes("unique") || msg.includes("duplicate")) {
       return NextResponse.json({ error: `Store code "${code}" already exists` }, { status: 409 });
     }
-    return NextResponse.json({ error: msg || "Create failed" }, { status: 400 });
+    return NextResponse.json({ error: "Create failed" }, { status: 400 });
   }
   return NextResponse.json({ ok: true, code });
 }

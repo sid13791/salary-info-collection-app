@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       }
     } catch (e) {
       return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Open failed" },
+        { error: "Open failed" },
         { status: 400 },
       );
     }
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Snapshot failed" },
+      { error: "Snapshot failed" },
       { status: 500 },
     );
   }
