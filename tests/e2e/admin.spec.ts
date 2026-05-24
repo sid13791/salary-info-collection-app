@@ -8,23 +8,21 @@ test.describe("Admin core flows", () => {
     await page.getByRole("link", { name: "Stores", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/stores$/);
 
-    // NCR01/MUM02 appear in both hint text and the table — scope to table cells
-    await expect(page.getByRole("cell", { name: "NCR01" })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "MUM02" })).toBeVisible();
+    // Seeded stores appear by name in the table
+    await expect(page.getByRole("cell", { name: "Delhi - Connaught Place" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Mumbai - Bandra" })).toBeVisible();
 
-    await page.getByLabel("Code").fill("BLR03");
-    await page.getByLabel("Name").fill("Bengaluru - Indiranagar");
+    await page.getByLabel("Store Name").fill("Bengaluru - Indiranagar");
     await page.getByRole("button", { name: /add store/i }).click();
 
-    await expect(page.getByText(/added blr03/i)).toBeVisible();
-    await expect(page.getByRole("cell", { name: "BLR03" })).toBeVisible();
+    await expect(page.getByText(/added bengaluru/i)).toBeVisible();
     await expect(page.getByRole("cell", { name: "Bengaluru - Indiranagar" })).toBeVisible();
   });
 
   test("admin can drill into a store and edit a packer", async ({ page }) => {
     await loginAsAdmin(page);
-    // First NCR01 link on dashboard goes to the store page
-    await page.getByRole("link", { name: "NCR01", exact: true }).first().click();
+    // First store link on dashboard goes to the store page
+    await page.getByRole("link", { name: "Delhi - Connaught Place" }).first().click();
     await expect(page).toHaveURL(/\/admin\/stores\/[a-f0-9-]+$/);
 
     await page.getByText("PKR001").click();

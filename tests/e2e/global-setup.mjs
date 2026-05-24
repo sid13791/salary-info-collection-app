@@ -35,8 +35,8 @@ export default async function globalSetup() {
     // ---------- Seed ----------
     const ncrId = randomUUID();
     const mumId = randomUUID();
-    await sql`INSERT INTO stores (id, code, name) VALUES (${ncrId}, 'NCR01', 'Delhi - Connaught Place')`;
-    await sql`INSERT INTO stores (id, code, name) VALUES (${mumId}, 'MUM02', 'Mumbai - Bandra')`;
+    await sql`INSERT INTO stores (id, name) VALUES (${ncrId}, 'Delhi - Connaught Place')`;
+    await sql`INSERT INTO stores (id, name) VALUES (${mumId}, 'Mumbai - Bandra')`;
 
     const adminId = randomUUID();
     const mgrNcrId = randomUUID();
