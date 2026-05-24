@@ -11,6 +11,7 @@ export function ManagerPackerList({
   cycleOpen,
   editHrefBase = "/manager",
   lockedWhenClosed = true,
+  onDelete,
 }: {
   packers: Packer[];
   cycleOpen: boolean;
@@ -18,6 +19,8 @@ export function ManagerPackerList({
   editHrefBase?: string;
   /** When false, rows stay clickable even if the cycle is closed (admin override). */
   lockedWhenClosed?: boolean;
+  /** If provided, shows a delete button per packer (admin only). */
+  onDelete?: (packerId: string, packerName: string) => void;
 }) {
   const canClick = cycleOpen || !lockedWhenClosed;
   const [filter, setFilter] = useState("");
@@ -69,10 +72,19 @@ export function ManagerPackerList({
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
                   {p.bank_details_status === "missing"
                     ? <Badge variant="warning">Missing</Badge>
                     : <Badge variant="success">Provided</Badge>}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(p.id, p.name); }}
+                      className="text-xs text-danger hover:bg-danger/10 px-2 py-1 rounded transition-colors"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </Link>

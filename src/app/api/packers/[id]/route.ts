@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiRequireUser } from "@/lib/auth";
+import { apiRequireUser, apiRequireAdmin } from "@/lib/auth";
 import { sql, getPackerById, getOpenCycle, deriveStatus, insertAudit } from "@/lib/db";
 import { ACCOUNT_REGEX, IFSC_REGEX, PHONE_REGEX, normalizeDigits, normalizeIfsc } from "@/lib/validators";
 import { requireJsonContentType } from "@/lib/csrf";
@@ -78,6 +78,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } catch (e) {
     return NextResponse.json({ error: "Update failed" }, { status: 400 });
   }
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const user = await apiRequireAdmin();
+  const packer = await getPackerById(params.id);
+  if (!packer) return NextResponse.json({ error: "Packer not found" }, { status: 404 });
+
+  await sql.begin(async (tx) => {
+    // Delete audit log entries first (FK constraint)
+    await tx`DELETE FROM audit_log WHERE packer_id = ${params.id}`;
+    // Delete cycle_packers snapshots
+    await tx`DELETE FROM cycle_packers WHERE packer_id = ${params.id}`;
+    // Delete the packer
+    await tx`DELETE FROM packers WHERE id = ${params.id}`;
+  });
+
+  await insertAudit({
+    packer_id: null,
+    field_changed: "packer_deleted",
+    old_value: JSON.stringify({ emp_id: packer.emp_id, name: packer.name, store_id: packer.store_id }),
+    new_value: null,
+    changed_by: user.id,
+  });
 
   return NextResponse.json({ ok: true });
 }

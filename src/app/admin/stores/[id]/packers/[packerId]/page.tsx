@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getPackerById, getStoreById } from "@/lib/db";
 import { EditPackerForm } from "@/app/manager/[id]/EditPackerForm";
 import { PackerHistory } from "./PackerHistory";
+import { DeletePackerButton } from "./DeletePackerButton";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,10 @@ export default async function AdminEditPackerPage({
   return (
     <div className="space-y-8">
       <Link href={backHref} className="text-sm text-muted-foreground hover:underline">← Back to store</Link>
-      <h1 className="text-lg font-semibold">{packer.name} <span className="text-muted-foreground font-normal text-sm">({packer.emp_id})</span></h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold">{packer.name} <span className="text-muted-foreground font-normal text-sm">({packer.emp_id})</span></h1>
+        <DeletePackerButton packerId={packer.id} packerName={packer.name} backHref={backHref} />
+      </div>
       <div className="max-w-md">
         <EditPackerForm packer={packer} backHref={backHref} />
       </div>

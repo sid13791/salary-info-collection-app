@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStoreById, getActivePackers, getOpenCycle } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
-import { ManagerPackerList } from "@/app/manager/PackerList";
+import { AdminPackerList } from "./AdminPackerList";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +29,10 @@ export default async function AdminStoreDetail({ params }: { params: { id: strin
           {missing > 0 && (<>{" · "}<Badge variant="warning">{missing} missing</Badge></>)}
         </div>
 
-        <ManagerPackerList
+        <AdminPackerList
           packers={packers}
           cycleOpen={!!cycle}
-          editHrefBase={`/admin/stores/${store.id}/packers`}
-          lockedWhenClosed={false}
+          storeId={store.id}
         />
 
         {packers.length === 0 && (
