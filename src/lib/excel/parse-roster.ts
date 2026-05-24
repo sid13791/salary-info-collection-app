@@ -6,7 +6,13 @@ export interface ParseResult {
   errors: string[];
 }
 
-const REQUIRED_HEADERS = ["employee_code", "full_name", "store_name", "current_role_name", "packman_status"] as const;
+const REQUIRED_HEADERS: Array<string | string[]> = [
+  "employee_code",
+  "full_name",
+  "store_name",
+  "current_role_name",
+  ["packman_status", "user_status"],  // accept either name
+];
 
 /**
  * Parse an .xlsx buffer into UploadedRow[]. Performs only structural validation
@@ -25,11 +31,15 @@ export function parseRosterBuffer(buf: ArrayBuffer | Buffer): ParseResult {
   }
 
   const headers = Object.keys(raw[0]).map((h) => h.trim().toLowerCase());
-  const missing = REQUIRED_HEADERS.filter((h) => !headers.includes(h));
+  const missing = REQUIRED_HEADERS.filter((h) => {
+    if (Array.isArray(h)) return !h.some((alt) => headers.includes(alt));
+    return !headers.includes(h);
+  });
   if (missing.length) {
+    const display = missing.map((h) => (Array.isArray(h) ? h.join(" or ") : h));
     return {
       rows: [],
-      errors: [`Missing required column(s): ${missing.join(", ")}. Expected: ${REQUIRED_HEADERS.join(", ")}.`],
+      errors: [`Missing required column(s): ${display.join(", ")}.`],
     };
   }
 
