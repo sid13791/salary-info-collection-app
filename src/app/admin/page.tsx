@@ -51,8 +51,7 @@ export default async function AdminDashboard() {
             <table className="w-full text-sm">
               <thead className="bg-muted text-left">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Code</th>
-                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Store</th>
                   <th className="px-3 py-2 font-medium text-right">Active</th>
                   <th className="px-3 py-2 font-medium text-right">Filled</th>
                   <th className="px-3 py-2 font-medium text-right">Missing</th>
@@ -64,10 +63,7 @@ export default async function AdminDashboard() {
                   return (
                     <tr key={s.id} className="border-t hover:bg-muted/40">
                       <td className="px-3 py-2 font-mono">
-                        <Link href={`/admin/stores/${s.id}`} className="underline">{s.code}</Link>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Link href={`/admin/stores/${s.id}`} className="hover:underline">{s.name}</Link>
+                        <Link href={`/admin/stores/${s.id}`} className="underline">{s.name}</Link>
                       </td>
                       <td className="px-3 py-2 text-right">{c.total}</td>
                       <td className="px-3 py-2 text-right">{c.filled}</td>
@@ -78,7 +74,7 @@ export default async function AdminDashboard() {
                   );
                 })}
                 {stores.length === 0 && (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
                     No stores yet. Add stores via the SQL editor or seed script.
                   </td></tr>
                 )}

@@ -12,7 +12,7 @@ interface AuditRow {
   changed_at: string;
   emp_id: string | null;
   packer_name: string | null;
-  store_code: string | null;
+  store_name: string | null;
   changed_by_email: string | null;
 }
 
@@ -22,7 +22,7 @@ export default async function AuditLogPage() {
       al.*,
       p.emp_id        AS emp_id,
       p.name          AS packer_name,
-      s.code          AS store_code,
+      s.name          AS store_name,
       u.email         AS changed_by_email
     FROM audit_log al
     LEFT JOIN packers p ON p.id = al.packer_id
@@ -55,7 +55,7 @@ export default async function AuditLogPage() {
                   <td className="px-3 py-2">
                     {l.emp_id ? <><span className="font-mono">{l.emp_id}</span> — {l.packer_name}</> : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-2">{l.store_code ?? "—"}</td>
+                  <td className="px-3 py-2">{l.store_name ?? "—"}</td>
                   <td className="px-3 py-2 font-mono text-xs">{l.field_changed}</td>
                   <td className="px-3 py-2 text-xs">
                     <span className="text-muted-foreground">{l.old_value ?? "∅"}</span>

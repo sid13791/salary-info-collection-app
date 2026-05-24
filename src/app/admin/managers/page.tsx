@@ -8,14 +8,13 @@ interface ManagerRow {
   id: string;
   email: string;
   is_active: number;
-  store_code: string | null;
   store_name: string | null;
 }
 
 export default async function ManagersPage() {
   const stores = await getStores();
   const managers = [...await sql<ManagerRow[]>`
-    SELECT u.id, u.email, u.is_active, s.code AS store_code, s.name AS store_name
+    SELECT u.id, u.email, u.is_active, s.name AS store_name
     FROM users u
     LEFT JOIN stores s ON s.id = u.store_id
     WHERE u.role = 'manager'
@@ -43,7 +42,7 @@ export default async function ManagersPage() {
                 {managers.map((m) => (
                   <tr key={m.id} className="border-t">
                     <td className="px-3 py-2">{m.email}</td>
-                    <td className="px-3 py-2">{m.store_code ? `${m.store_code} — ${m.store_name}` : "—"}</td>
+                    <td className="px-3 py-2">{m.store_name ?? "—"}</td>
                     <td className="px-3 py-2">
                       {m.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>}
                     </td>

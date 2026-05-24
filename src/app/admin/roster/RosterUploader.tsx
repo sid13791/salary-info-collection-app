@@ -8,15 +8,15 @@ import { InlinePackerForm } from "./InlinePackerForm";
 
 interface DiffPreview {
   matched: number;
-  newPackers: Array<{ emp_id: string; name: string; store_code: string }>;
+  newPackers: Array<{ emp_id: string; name: string; store_name: string }>;
   reactivated: number;
-  deactivated: Array<{ emp_id: string; name: string; store_code: string }>;
+  deactivated: Array<{ emp_id: string; name: string; store_name: string }>;
   storeMigrations: Array<{ emp_id: string; from: string; to: string }>;
   invalidRows: Array<{ rowIndex: number; reason: string }>;
 }
 
 interface RosterUploaderProps {
-  stores: Array<{ id: string; code: string; name: string }>;
+  stores: Array<{ id: string; name: string }>;
   cycleOpen: boolean;
 }
 
@@ -147,7 +147,7 @@ export function RosterUploader({ stores, cycleOpen }: RosterUploaderProps) {
             <Section title={`Will be marked inactive (${preview.deactivated.length})`}>
               <ul className="text-sm space-y-1">
                 {preview.deactivated.slice(0, 20).map((p, i) => (
-                  <li key={i}>{p.emp_id} — {p.name} ({p.store_code})</li>
+                  <li key={i}>{p.emp_id} — {p.name} ({p.store_name})</li>
                 ))}
                 {preview.deactivated.length > 20 && <li>… and {preview.deactivated.length - 20} more</li>}
               </ul>

@@ -6,7 +6,7 @@ import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
 import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
-  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_code: z.string() })),
+  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string() })),
 });
 
 export async function POST(req: Request) {
@@ -21,9 +21,9 @@ export async function POST(req: Request) {
   if (!openCycle) return NextResponse.json({ error: "No open cycle. Open a cycle first." }, { status: 400 });
 
   const stores = await getStores();
-  const storeCodeToId = new Map(stores.map((s) => [s.code, s.id]));
-  const storeIdToCode = new Map(stores.map((s) => [s.id, s.code]));
-  const knownStoreCodes = new Set(stores.map((s) => s.code));
+  const storeNameToId = new Map(stores.map((s) => [s.name, s.id]));
+  const storeIdToName = new Map(stores.map((s) => [s.id, s.name]));
+  const knownStoreNames = new Set(stores.map((s) => s.name));
 
   const dbPackers = [...await sql<{ id: string; emp_id: string; name: string; store_id: string; is_active: number }[]>`
     SELECT id, emp_id, name, store_id, is_active FROM packers
@@ -34,11 +34,11 @@ export async function POST(req: Request) {
     emp_id: p.emp_id,
     name: p.name,
     store_id: p.store_id,
-    store_code: storeIdToCode.get(p.store_id) ?? "",
+    store_name: storeIdToName.get(p.store_id) ?? "",
     is_active: p.is_active === 1,
   }));
 
-  const diff = diffRoster(existing, parsed.data.rows, knownStoreCodes);
+  const diff = diffRoster(existing, parsed.data.rows, knownStoreNames);
   if (diff.invalidRows.length > 0) {
     return NextResponse.json({ error: "Invalid rows present; cannot commit", details: diff.invalidRows }, { status: 400 });
   }
@@ -49,8 +49,8 @@ export async function POST(req: Request) {
       error: "Store migrations detected — resolve manually before committing",
       details: diff.storeMigrations.map((m) => ({
         emp_id: m.uploaded.emp_id,
-        from: m.existing.store_code,
-        to: m.uploaded.store_code,
+        from: m.existing.store_name,
+        to: m.uploaded.store_name,
       })),
     }, { status: 400 });
   }
@@ -62,9 +62,12 @@ export async function POST(req: Request) {
   try {
     await sql.begin(async (tx) => {
       for (const r of diff.newPackers) {
+        const sid = storeNameToId.get(r.store_name);
+        if (!sid) throw new Error(`Store not found: ${r.store_name}`);
+        const active = r.packman_status !== "INACTIVE" ? 1 : 0;
         await tx`
           INSERT INTO packers (id, emp_id, name, store_id, is_active, bank_details_status)
-          VALUES (${newId()}, ${r.emp_id}, ${r.name}, ${(() => { const sid = storeCodeToId.get(r.store_code); if (!sid) throw new Error(`Store code not found: ${r.store_code}`); return sid; })()}, 1, 'missing')
+          VALUES (${newId()}, ${r.emp_id}, ${r.name}, ${sid}, ${active}, 'missing')
         `;
         created++;
       }

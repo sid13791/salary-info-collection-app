@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/Input";
 
 export function NewStoreForm() {
   const router = useRouter();
-  const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +20,7 @@ export function NewStoreForm() {
     const res = await fetch("/api/stores", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ code, name }),
+      body: JSON.stringify({ name }),
     });
     const body = await res.json().catch(() => ({}));
     setBusy(false);
@@ -29,39 +28,27 @@ export function NewStoreForm() {
       setError(body.error ?? "Failed to add store");
       return;
     }
-    setSuccess(`Added ${body.code}`);
-    setCode("");
+    setSuccess(`Added ${body.name}`);
     setName("");
     router.refresh();
   }
 
   return (
-    <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+    <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
       <label className="block">
-        <span className="text-sm font-medium">Code</span>
-        <Input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
-          placeholder="NCR03"
-          maxLength={16}
-          required
-          className="mt-1 font-mono"
-        />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium">Name</span>
+        <span className="text-sm font-medium">Store Name</span>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Delhi – Saket"
+          placeholder="NOD-Sector-10 New"
           maxLength={200}
           required
           className="mt-1"
         />
       </label>
       <Button type="submit" disabled={busy}>{busy ? "Adding…" : "Add store"}</Button>
-      {error && <p className="text-sm text-danger md:col-span-3">{error}</p>}
-      {success && <p className="text-sm text-success md:col-span-3">{success}</p>}
+      {error && <p className="text-sm text-danger md:col-span-2">{error}</p>}
+      {success && <p className="text-sm text-success md:col-span-2">{success}</p>}
     </form>
   );
 }

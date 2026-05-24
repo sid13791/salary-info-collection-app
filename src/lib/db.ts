@@ -55,7 +55,6 @@ export type BankDetailsStatus = "missing" | "provided";
 
 export interface Store {
   id: string;
-  code: string;
   name: string;
   created_at: string;
 }
@@ -110,7 +109,7 @@ export interface AuditEntry {
 // ============================================================
 
 export async function getStores(): Promise<Store[]> {
-  const rows = await sql<Store[]>`SELECT * FROM stores ORDER BY code`;
+  const rows = await sql<Store[]>`SELECT * FROM stores ORDER BY name`;
   return [...rows];
 }
 
@@ -119,8 +118,8 @@ export async function getStoreById(id: string): Promise<Store | null> {
   return rows[0] ?? null;
 }
 
-export async function getStoreByCode(code: string): Promise<Store | null> {
-  const rows = await sql<Store[]>`SELECT * FROM stores WHERE code = ${code}`;
+export async function getStoreByName(name: string): Promise<Store | null> {
+  const rows = await sql<Store[]>`SELECT * FROM stores WHERE name = ${name}`;
   return rows[0] ?? null;
 }
 

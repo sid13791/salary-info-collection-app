@@ -6,7 +6,7 @@ export interface ParseResult {
   errors: string[];
 }
 
-const REQUIRED_HEADERS = ["emp_id", "name", "store_code"] as const;
+const REQUIRED_HEADERS = ["employee_code", "full_name", "store_name", "current_role_name", "packman_status"] as const;
 
 /**
  * Parse an .xlsx buffer into UploadedRow[]. Performs only structural validation
@@ -36,9 +36,10 @@ export function parseRosterBuffer(buf: ArrayBuffer | Buffer): ParseResult {
   const rows: UploadedRow[] = raw.map((r) => {
     const map = lowerKeyMap(r);
     return {
-      emp_id: String(map.emp_id ?? "").trim(),
-      name: String(map.name ?? "").trim(),
-      store_code: String(map.store_code ?? "").trim(),
+      emp_id: String(map.employee_code ?? "").trim(),
+      name: String(map.full_name ?? "").trim(),
+      store_name: String(map.store_name ?? "").trim(),
+      packman_status: String(map.packman_status ?? map.user_status ?? "ACTIVE").trim(),
     };
   });
 
@@ -54,9 +55,9 @@ function lowerKeyMap(obj: Record<string, unknown>): Record<string, unknown> {
 /** Generates a downloadable .xlsx template for admins. */
 export function generateRosterTemplate(): Buffer {
   const ws = XLSX.utils.aoa_to_sheet([
-    ["emp_id", "name", "store_code"],
-    ["PKR001", "Ramesh Kumar", "NCR01"],
-    ["PKR002", "Sunita Sharma", "NCR01"],
+    ["store_name", "full_name", "employee_code", "current_role_name", "packman_status"],
+    ["NOD-Sector-10 New", "Ramesh Kumar", "EMP0001001", "FR_Associate", "ACTIVE"],
+    ["NOD-Sector-10 New", "Sunita Sharma", "EMP0001002", "FR_IB Associate", "ACTIVE"],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Roster");

@@ -6,8 +6,7 @@ PRAGMA journal_mode = WAL;
 
 CREATE TABLE IF NOT EXISTS stores (
   id          TEXT PRIMARY KEY,
-  code        TEXT UNIQUE NOT NULL,
-  name        TEXT NOT NULL,
+  name        TEXT UNIQUE NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

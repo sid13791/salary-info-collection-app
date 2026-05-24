@@ -4,6 +4,7 @@ const SCRYPT_N = 32768; // memory cost (2^15, OWASP minimum)
 const SCRYPT_N_LEGACY = 16384; // old cost parameter for backward-compatible verify
 const KEY_LEN = 64;
 const SALT_LEN = 16;
+const MAX_MEM = 64 * 1024 * 1024; // 64 MB — Node 24 defaults to 32 MB which is exactly at the boundary for N=32768,r=8
 
 /**
  * Hash a password.
@@ -11,7 +12,7 @@ const SALT_LEN = 16;
  */
 export function hashPassword(password: string): string {
   const salt = randomBytes(SALT_LEN);
-  const hash = scryptSync(password, salt, KEY_LEN, { N: SCRYPT_N, r: 8, p: 1 });
+  const hash = scryptSync(password, salt, KEY_LEN, { N: SCRYPT_N, r: 8, p: 1, maxmem: MAX_MEM });
   return `scrypt$${SCRYPT_N}$${salt.toString("hex")}$${hash.toString("hex")}`;
 }
 
@@ -44,6 +45,6 @@ export function verifyPassword(password: string, stored: string): boolean {
   }
 
   if (salt.length !== SALT_LEN || expected.length !== KEY_LEN) return false;
-  const actual = scryptSync(password, salt, KEY_LEN, { N: n, r: 8, p: 1 });
+  const actual = scryptSync(password, salt, KEY_LEN, { N: n, r: 8, p: 1, maxmem: MAX_MEM });
   return timingSafeEqual(actual, expected);
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
 interface InlinePackerFormProps {
-  stores: Array<{ id: string; code: string; name: string }>;
+  stores: Array<{ id: string; name: string }>;
   cycleOpen: boolean;
 }
 
@@ -88,7 +88,7 @@ export function InlinePackerForm({ stores, cycleOpen }: InlinePackerFormProps) {
             required
           >
             {stores.map((s) => (
-              <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </label>

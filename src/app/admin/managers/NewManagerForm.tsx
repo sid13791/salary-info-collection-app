@@ -6,7 +6,7 @@ import type { Store } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
-export function NewManagerForm({ stores }: { stores: Pick<Store, "id" | "code" | "name">[] }) {
+export function NewManagerForm({ stores }: { stores: Pick<Store, "id" | "name">[] }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +50,7 @@ export function NewManagerForm({ stores }: { stores: Pick<Store, "id" | "code" |
       <label className="block">
         <span className="text-sm font-medium">Store</span>
         <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" required>
-          {stores.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
+          {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </label>
       <Button type="submit" disabled={busy}>{busy ? "Creating…" : "Create manager"}</Button>

@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 export interface ExportRow {
   emp_id: string;
   name: string;
-  store_code: string;
   store_name: string;
   bank_account_no: string | null;
   ifsc_code: string | null;
@@ -16,7 +15,6 @@ export function generateBankExport(rows: ExportRow[], month: string): Buffer {
     [
       "emp_id",
       "name",
-      "store_code",
       "store_name",
       "bank_account_no",
       "ifsc_code",
@@ -26,7 +24,6 @@ export function generateBankExport(rows: ExportRow[], month: string): Buffer {
     ...rows.map((r) => [
       r.emp_id,
       r.name,
-      r.store_code,
       r.store_name,
       r.bank_account_no ?? "",
       r.ifsc_code ?? "",

@@ -4,15 +4,15 @@ export const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 export const ACCOUNT_REGEX = /^[0-9]{9,18}$/;
 export const PHONE_REGEX = /^[0-9]{10}$/;
 export const EMP_ID_REGEX = /^[A-Z0-9._-]{1,32}$/;
-export const STORE_CODE_REGEX = /^[A-Z0-9_-]{1,16}$/;
+export const STORE_NAME_MAX_LEN = 200;
 export const MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export function normalizeEmpId(raw: string): string {
   return raw.trim().toUpperCase();
 }
 
-export function normalizeStoreCode(raw: string): string {
-  return raw.trim().toUpperCase();
+export function normalizeStoreName(raw: string): string {
+  return raw.trim();
 }
 
 export function normalizeIfsc(raw: string): string {

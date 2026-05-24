@@ -81,7 +81,7 @@ export default async function HistoryMonthPage({ params }: { params: { month: st
                   <tr key={p.id} className="border-t align-top">
                     <td className="px-3 py-2 font-mono text-xs">{p.emp_id}</td>
                     <td className="px-3 py-2">{p.name}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{store?.code ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs">{store?.name ?? "—"}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.bank_account_no ?? "—"}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.ifsc_code ?? "—"}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.phone ?? "—"}</td>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { Store } from "@/lib/db";
 
-export function NewPackerForm({ stores, cycleOpen }: { stores: Pick<Store, "id" | "code" | "name">[]; cycleOpen: boolean }) {
+export function NewPackerForm({ stores, cycleOpen }: { stores: Pick<Store, "id" | "name">[]; cycleOpen: boolean }) {
   const router = useRouter();
   const [form, setForm] = useState({
     emp_id: "",
@@ -68,7 +68,7 @@ export function NewPackerForm({ stores, cycleOpen }: { stores: Pick<Store, "id" 
           required
         >
           {stores.map((s) => (
-            <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
+            <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       </Field>

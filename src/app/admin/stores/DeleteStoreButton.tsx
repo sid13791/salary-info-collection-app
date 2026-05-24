@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/Button";
 
 interface DeleteStoreButtonProps {
   storeId: string;
-  storeCode: string;
+  storeName: string;
 }
 
-export function DeleteStoreButton({ storeId, storeCode }: DeleteStoreButtonProps) {
+export function DeleteStoreButton({ storeId, storeName }: DeleteStoreButtonProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
-    if (!confirm(`Delete store "${storeCode}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete store "${storeName}"? This cannot be undone.`)) return;
     setBusy(true);
     setError(null);
     const res = await fetch(`/api/stores/${storeId}`, { method: "DELETE" });

@@ -6,7 +6,7 @@ import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
 import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
-  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_code: z.string() })),
+  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string() })),
 });
 
 export async function POST(req: Request) {
@@ -18,8 +18,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
   const stores = await getStores();
-  const storeIdToCode = new Map(stores.map((s) => [s.id, s.code]));
-  const knownStoreCodes = new Set(stores.map((s) => s.code));
+  const storeIdToName = new Map(stores.map((s) => [s.id, s.name]));
+  const knownStoreNames = new Set(stores.map((s) => s.name));
 
   const dbPackers = [...await sql<{ id: string; emp_id: string; name: string; store_id: string; is_active: number }[]>`
     SELECT id, emp_id, name, store_id, is_active FROM packers
@@ -30,22 +30,22 @@ export async function POST(req: Request) {
     emp_id: p.emp_id,
     name: p.name,
     store_id: p.store_id,
-    store_code: storeIdToCode.get(p.store_id) ?? "",
+    store_name: storeIdToName.get(p.store_id) ?? "",
     is_active: p.is_active === 1,
   }));
 
-  const diff = diffRoster(existing, parsed.data.rows, knownStoreCodes);
+  const diff = diffRoster(existing, parsed.data.rows, knownStoreNames);
 
   return NextResponse.json({
     diff: {
       matched: diff.matched.length,
       newPackers: diff.newPackers,
       reactivated: diff.reactivated.length,
-      deactivated: diff.deactivated.map((p) => ({ emp_id: p.emp_id, name: p.name, store_code: p.store_code })),
+      deactivated: diff.deactivated.map((p) => ({ emp_id: p.emp_id, name: p.name, store_name: p.store_name })),
       storeMigrations: diff.storeMigrations.map((m) => ({
         emp_id: m.uploaded.emp_id,
-        from: m.existing.store_code,
-        to: m.uploaded.store_code,
+        from: m.existing.store_name,
+        to: m.uploaded.store_name,
       })),
       invalidRows: diff.invalidRows.map((r) => ({ rowIndex: r.rowIndex, reason: r.reason })),
     },

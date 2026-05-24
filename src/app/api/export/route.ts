@@ -74,12 +74,11 @@ export async function GET(req: Request) {
 
 function toExportRow(
   p: { emp_id: string; name: string; store_id: string; bank_account_no: string | null; ifsc_code: string | null; phone: string | null },
-  storeById: Map<string, { code: string; name: string }>,
+  storeById: Map<string, { name: string }>,
 ): ExportRow {
   return {
     emp_id: p.emp_id,
     name: p.name,
-    store_code: storeById.get(p.store_id)?.code ?? "",
     store_name: storeById.get(p.store_id)?.name ?? "",
     bank_account_no: p.bank_account_no,
     ifsc_code: p.ifsc_code,

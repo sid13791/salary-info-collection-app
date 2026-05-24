@@ -19,7 +19,7 @@ export default async function RosterUploadPage() {
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Upload an <code className="bg-muted px-1 rounded">.xlsx</code> with columns: <b>emp_id</b>, <b>name</b>, <b>store_code</b>.
+            Upload an <code className="bg-muted px-1 rounded">.xlsx</code> with columns: <b>store_name</b>, <b>full_name</b>, <b>employee_code</b>, <b>current_role_name</b>, <b>packman_status</b>.
           </p>
           <a
             href="/api/roster/template"

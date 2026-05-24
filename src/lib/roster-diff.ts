@@ -1,9 +1,9 @@
-import { normalizeEmpId, normalizeStoreCode } from "./validators";
+import { normalizeEmpId, normalizeStoreName } from "./validators";
 
 export interface ExistingPacker {
   id: string;
   emp_id: string;
-  store_code: string;
+  store_name: string;
   store_id: string;
   is_active: boolean;
   name: string;
@@ -12,7 +12,8 @@ export interface ExistingPacker {
 export interface UploadedRow {
   emp_id: string;
   name: string;
-  store_code: string;
+  store_name: string;
+  packman_status: string;
 }
 
 export interface RosterDiff {
@@ -38,7 +39,7 @@ export interface RosterDiff {
 export function diffRoster(
   existing: ExistingPacker[],
   uploaded: UploadedRow[],
-  knownStoreCodes: Set<string>,
+  knownStoreNames: Set<string>,
 ): RosterDiff {
   const result: RosterDiff = {
     matched: [],
@@ -49,11 +50,11 @@ export function diffRoster(
     invalidRows: [],
   };
 
-  // Index existing by (emp_id, store_code) and by emp_id alone for migration detection
+  // Index existing by (emp_id, store_name) and by emp_id alone for migration detection
   const byKey = new Map<string, ExistingPacker>();
   const byEmpId = new Map<string, ExistingPacker[]>();
   for (const p of existing) {
-    const key = `${p.emp_id}::${p.store_code}`;
+    const key = `${p.emp_id}::${p.store_name}`;
     byKey.set(key, p);
     const list = byEmpId.get(p.emp_id) ?? [];
     list.push(p);
@@ -67,14 +68,16 @@ export function diffRoster(
     rowIndex: i,
     emp_id: normalizeEmpId(r.emp_id ?? ""),
     name: (r.name ?? "").trim(),
-    store_code: normalizeStoreCode(r.store_code ?? ""),
+    store_name: normalizeStoreName(r.store_name ?? ""),
+    packman_status: (r.packman_status ?? "").trim().toUpperCase(),
   }));
 
   for (const row of normalized) {
     const upRow: UploadedRow = {
       emp_id: row.emp_id,
       name: row.name,
-      store_code: row.store_code,
+      store_name: row.store_name,
+      packman_status: row.packman_status,
     };
 
     if (!row.emp_id) {
@@ -85,19 +88,19 @@ export function diffRoster(
       result.invalidRows.push({ row: upRow, rowIndex: row.rowIndex, reason: "Missing name" });
       continue;
     }
-    if (!row.store_code) {
-      result.invalidRows.push({ row: upRow, rowIndex: row.rowIndex, reason: "Missing store_code" });
+    if (!row.store_name) {
+      result.invalidRows.push({ row: upRow, rowIndex: row.rowIndex, reason: "Missing store_name" });
       continue;
     }
-    if (!knownStoreCodes.has(row.store_code)) {
+    if (!knownStoreNames.has(row.store_name)) {
       result.invalidRows.push({
         row: upRow,
         rowIndex: row.rowIndex,
-        reason: `Unknown store_code "${row.store_code}"`,
+        reason: `Unknown store_name "${row.store_name}"`,
       });
       continue;
     }
-    const key = `${row.emp_id}::${row.store_code}`;
+    const key = `${row.emp_id}::${row.store_name}`;
     if (seenInUpload.has(key)) {
       result.invalidRows.push({
         row: upRow,
@@ -108,36 +111,36 @@ export function diffRoster(
     }
     seenInUpload.add(key);
 
+    const isActive = row.packman_status !== "INACTIVE";
+
     const matchExact = byKey.get(key);
     if (matchExact) {
-      if (matchExact.is_active) {
-        result.matched.push({ existing: matchExact, uploaded: upRow });
+      if (isActive) {
+        if (matchExact.is_active) {
+          result.matched.push({ existing: matchExact, uploaded: upRow });
+        } else {
+          result.reactivated.push({ existing: matchExact, uploaded: upRow });
+        }
       } else {
-        result.reactivated.push({ existing: matchExact, uploaded: upRow });
+        // INACTIVE in upload → deactivate if currently active
+        if (matchExact.is_active) {
+          result.deactivated.push(matchExact);
+        } else {
+          result.matched.push({ existing: matchExact, uploaded: upRow });
+        }
       }
       continue;
     }
 
     // Same emp_id exists but in a different store — flag as potential migration
     const otherStoreMatches = byEmpId.get(row.emp_id) ?? [];
-    const inOtherStore = otherStoreMatches.find((p) => p.store_code !== row.store_code);
+    const inOtherStore = otherStoreMatches.find((p) => p.store_name !== row.store_name);
     if (inOtherStore) {
       result.storeMigrations.push({ existing: inOtherStore, uploaded: upRow });
       continue;
     }
 
     result.newPackers.push(upRow);
-  }
-
-  // Deactivations: existing & active packers not present in upload
-  for (const p of existing) {
-    if (!p.is_active) continue;
-    const key = `${p.emp_id}::${p.store_code}`;
-    if (!seenInUpload.has(key)) {
-      // Don't double-count store migrations as deactivations — the old row will be flagged separately
-      const movedTo = result.storeMigrations.find((m) => m.existing.id === p.id);
-      if (!movedTo) result.deactivated.push(p);
-    }
   }
 
   return result;
