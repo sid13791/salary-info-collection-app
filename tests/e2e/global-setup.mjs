@@ -23,13 +23,13 @@ export default async function globalSetup() {
   const sql = postgres(DATABASE_URL, { max: 1, idle_timeout: 5 });
 
   try {
-    // Clean slate — delete in FK-safe order
+    // Clean all transactional data + test users, but preserve real admin accounts
     await sql`DELETE FROM cycle_packers`;
     await sql`DELETE FROM audit_log`;
     await sql`DELETE FROM cycles`;
     await sql`DELETE FROM packers`;
     await sql`DELETE FROM sessions`;
-    await sql`DELETE FROM users`;
+    await sql`DELETE FROM users WHERE email LIKE '%@test.local'`;
     await sql`DELETE FROM stores`;
 
     // ---------- Seed ----------

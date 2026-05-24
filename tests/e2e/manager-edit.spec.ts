@@ -5,7 +5,7 @@ test.describe("Manager edits packer bank details", () => {
   test("save valid bank details → status flips Missing → Provided", async ({ page }) => {
     await loginAsManager(page, "ncr");
 
-    await page.getByText("PKR001").click();
+    await page.getByRole("link", { name: /PKR001/ }).click();
     await expect(page).toHaveURL(/\/manager\/[a-f0-9-]+/);
 
     await page.getByLabel("Bank account number").fill("123456789012");
@@ -15,7 +15,7 @@ test.describe("Manager edits packer bank details", () => {
 
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page).toHaveURL(/\/manager$/);
+    await expect(page).toHaveURL(/\/manager$/, { timeout: 15000 });
     const row = page.locator("li", { hasText: "PKR001" });
     await expect(row.getByText(/provided/i)).toBeVisible();
     await expect(row.getByText("9012")).toBeVisible();

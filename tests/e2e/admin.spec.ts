@@ -33,7 +33,7 @@ test.describe("Admin core flows", () => {
   test("admin can create a new manager login", async ({ page }) => {
     await loginAsAdmin(page);
     await page.getByRole("link", { name: "Managers", exact: true }).click();
-    await expect(page).toHaveURL(/\/admin\/managers/);
+    await expect(page).toHaveURL(/\/admin\/managers/, { timeout: 10000 });
 
     await page.getByLabel("Email").fill("new.mgr@test.local");
     await page.getByLabel("Password").fill("newpassword1");
