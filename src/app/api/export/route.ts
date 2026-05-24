@@ -17,6 +17,7 @@ export async function GET(req: Request) {
 
   type Source = {
     emp_id: string; name: string; store_id: string;
+    user_status: string; role_name: string | null;
     bank_account_no: string | null; ifsc_code: string | null; phone: string | null;
   };
 
@@ -73,13 +74,15 @@ export async function GET(req: Request) {
 }
 
 function toExportRow(
-  p: { emp_id: string; name: string; store_id: string; bank_account_no: string | null; ifsc_code: string | null; phone: string | null },
+  p: { emp_id: string; name: string; store_id: string; user_status?: string; role_name?: string | null; bank_account_no: string | null; ifsc_code: string | null; phone: string | null },
   storeById: Map<string, { name: string }>,
 ): ExportRow {
   return {
     emp_id: p.emp_id,
     name: p.name,
     store_name: storeById.get(p.store_id)?.name ?? "",
+    current_role_name: p.role_name ?? "",
+    user_status: p.user_status ?? "ACTIVE",
     bank_account_no: p.bank_account_no,
     ifsc_code: p.ifsc_code,
     phone: p.phone,

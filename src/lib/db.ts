@@ -76,6 +76,8 @@ export interface Packer {
   name: string;
   store_id: string;
   is_active: number; // 0|1
+  user_status: string; // 'ACTIVE' | 'INACTIVE'
+  role_name: string | null;
   bank_account_no: string | null;
   ifsc_code: string | null;
   phone: string | null;

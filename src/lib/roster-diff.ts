@@ -14,6 +14,7 @@ export interface UploadedRow {
   name: string;
   store_name: string;
   packman_status: string;
+  current_role_name: string;
 }
 
 export interface RosterDiff {
@@ -70,6 +71,7 @@ export function diffRoster(
     name: (r.name ?? "").trim(),
     store_name: normalizeStoreName(r.store_name ?? ""),
     packman_status: (r.packman_status ?? "").trim().toUpperCase(),
+    current_role_name: (r.current_role_name ?? "").trim(),
   }));
 
   for (const row of normalized) {
@@ -78,6 +80,7 @@ export function diffRoster(
       name: row.name,
       store_name: row.store_name,
       packman_status: row.packman_status,
+      current_role_name: row.current_role_name,
     };
 
     if (!row.emp_id) {
@@ -111,23 +114,13 @@ export function diffRoster(
     }
     seenInUpload.add(key);
 
-    const isActive = row.packman_status !== "INACTIVE";
-
     const matchExact = byKey.get(key);
     if (matchExact) {
-      if (isActive) {
-        if (matchExact.is_active) {
-          result.matched.push({ existing: matchExact, uploaded: upRow });
-        } else {
-          result.reactivated.push({ existing: matchExact, uploaded: upRow });
-        }
+      // Presence in upload means the packer stays — user_status is just a label.
+      if (matchExact.is_active) {
+        result.matched.push({ existing: matchExact, uploaded: upRow });
       } else {
-        // INACTIVE in upload → deactivate if currently active
-        if (matchExact.is_active) {
-          result.deactivated.push(matchExact);
-        } else {
-          result.matched.push({ existing: matchExact, uploaded: upRow });
-        }
+        result.reactivated.push({ existing: matchExact, uploaded: upRow });
       }
       continue;
     }
@@ -141,6 +134,17 @@ export function diffRoster(
     }
 
     result.newPackers.push(upRow);
+  }
+
+  // Deactivate: active DB packers not seen in this upload at all
+  for (const p of existing) {
+    if (!p.is_active) continue;
+    const key = `${p.emp_id}::${p.store_name}`;
+    if (seenInUpload.has(key)) continue;
+    // Skip if already flagged as a store migration
+    const inMigrations = result.storeMigrations.some((m) => m.existing.id === p.id);
+    if (inMigrations) continue;
+    result.deactivated.push(p);
   }
 
   return result;

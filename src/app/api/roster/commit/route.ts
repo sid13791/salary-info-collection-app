@@ -6,7 +6,7 @@ import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
 import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
-  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string() })),
+  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string(), current_role_name: z.string().optional().default("") })),
 });
 
 export async function POST(req: Request) {
@@ -64,27 +64,31 @@ export async function POST(req: Request) {
       for (const r of diff.newPackers) {
         const sid = storeNameToId.get(r.store_name);
         if (!sid) throw new Error(`Store not found: ${r.store_name}`);
-        const active = r.packman_status !== "INACTIVE" ? 1 : 0;
+        const userStatus = r.packman_status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
         await tx`
-          INSERT INTO packers (id, emp_id, name, store_id, is_active, bank_details_status)
-          VALUES (${newId()}, ${r.emp_id}, ${r.name}, ${sid}, ${active}, 'missing')
+          INSERT INTO packers (id, emp_id, name, store_id, is_active, user_status, role_name, bank_details_status)
+          VALUES (${newId()}, ${r.emp_id}, ${r.name}, ${sid}, 1, ${userStatus}, ${r.current_role_name || null}, 'missing')
         `;
         created++;
       }
       for (const m of diff.reactivated) {
+        const userStatus = m.uploaded.packman_status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
         await tx`
-          UPDATE packers SET is_active = 1, name = ${m.uploaded.name}, updated_at = now()
+          UPDATE packers SET is_active = 1, name = ${m.uploaded.name},
+            user_status = ${userStatus}, role_name = ${m.uploaded.current_role_name || null},
+            updated_at = now()
           WHERE id = ${m.existing.id}
         `;
         reactivated++;
       }
       for (const m of diff.matched) {
-        if (m.existing.name !== m.uploaded.name) {
-          await tx`
-            UPDATE packers SET name = ${m.uploaded.name}, updated_at = now()
-            WHERE id = ${m.existing.id}
-          `;
-        }
+        const userStatus = m.uploaded.packman_status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+        await tx`
+          UPDATE packers SET name = ${m.uploaded.name},
+            user_status = ${userStatus}, role_name = ${m.uploaded.current_role_name || null},
+            updated_at = now()
+          WHERE id = ${m.existing.id}
+        `;
       }
       for (const p of diff.deactivated) {
         await tx`

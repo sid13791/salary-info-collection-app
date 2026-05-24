@@ -4,6 +4,8 @@ export interface ExportRow {
   emp_id: string;
   name: string;
   store_name: string;
+  current_role_name: string;
+  user_status: string;
   bank_account_no: string | null;
   ifsc_code: string | null;
   phone: string | null;
@@ -16,6 +18,8 @@ export function generateBankExport(rows: ExportRow[], month: string): Buffer {
       "emp_id",
       "name",
       "store_name",
+      "current_role_name",
+      "user_status",
       "bank_account_no",
       "ifsc_code",
       "phone",
@@ -25,6 +29,8 @@ export function generateBankExport(rows: ExportRow[], month: string): Buffer {
       r.emp_id,
       r.name,
       r.store_name,
+      r.current_role_name ?? "",
+      r.user_status ?? "ACTIVE",
       r.bank_account_no ?? "",
       r.ifsc_code ?? "",
       r.phone ?? "",

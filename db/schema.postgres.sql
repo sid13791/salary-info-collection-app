@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS packers (
   name                 TEXT NOT NULL,
   store_id             TEXT NOT NULL REFERENCES stores(id),
   is_active            SMALLINT NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+  user_status          TEXT NOT NULL DEFAULT 'ACTIVE'
+                       CHECK (user_status IN ('ACTIVE','INACTIVE')),
+  role_name            TEXT,
   bank_account_no      TEXT,
   ifsc_code            TEXT,
   phone                TEXT,

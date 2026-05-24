@@ -50,6 +50,7 @@ export function parseRosterBuffer(buf: ArrayBuffer | Buffer): ParseResult {
       name: String(map.full_name ?? "").trim(),
       store_name: String(map.store_name ?? "").trim(),
       packman_status: String(map.packman_status ?? map.user_status ?? "ACTIVE").trim(),
+      current_role_name: String(map.current_role_name ?? "").trim(),
     };
   });
 

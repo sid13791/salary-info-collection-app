@@ -6,7 +6,7 @@ import { diffRoster, type ExistingPacker } from "@/lib/roster-diff";
 import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
-  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string() })),
+  rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string(), current_role_name: z.string().optional().default("") })),
 });
 
 export async function POST(req: Request) {
