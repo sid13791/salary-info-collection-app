@@ -38,9 +38,9 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     diff: {
-      matched: diff.matched.length,
-      newPackers: diff.newPackers,
-      reactivated: diff.reactivated.length,
+      matched: diff.matched.map((m) => ({ emp_id: m.uploaded.emp_id, name: m.uploaded.name, store_name: m.uploaded.store_name })),
+      newPackers: diff.newPackers.map((p) => ({ emp_id: p.emp_id, name: p.name, store_name: p.store_name })),
+      reactivated: diff.reactivated.map((m) => ({ emp_id: m.uploaded.emp_id, name: m.uploaded.name, store_name: m.uploaded.store_name })),
       deactivated: diff.deactivated.map((p) => ({ emp_id: p.emp_id, name: p.name, store_name: p.store_name })),
       storeMigrations: diff.storeMigrations.map((m) => ({
         emp_id: m.uploaded.emp_id,

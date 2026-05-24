@@ -7,6 +7,8 @@ import { requireJsonContentType } from "@/lib/csrf";
 
 const bodySchema = z.object({
   rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string(), current_role_name: z.string().optional().default("") })),
+  removedKeys: z.array(z.string()).optional().default([]),
+  keepActive: z.array(z.string()).optional().default([]),
 });
 
 export async function POST(req: Request) {
@@ -38,7 +40,16 @@ export async function POST(req: Request) {
     is_active: p.is_active === 1,
   }));
 
-  const diff = diffRoster(existing, parsed.data.rows, knownStoreNames);
+  const removedSet = new Set(parsed.data.removedKeys);
+  const keepActiveSet = new Set(parsed.data.keepActive);
+
+  // Filter out rows the admin removed from matched/new/reactivated
+  const filteredRows = parsed.data.rows.filter((r) => {
+    const key = `${r.emp_id}::${r.store_name}`;
+    return !removedSet.has(key);
+  });
+
+  const diff = diffRoster(existing, filteredRows, knownStoreNames);
   if (diff.invalidRows.length > 0) {
     return NextResponse.json({ error: "Invalid rows present; cannot commit", details: diff.invalidRows }, { status: 400 });
   }
@@ -54,6 +65,12 @@ export async function POST(req: Request) {
       })),
     }, { status: 400 });
   }
+
+  // Remove packers the admin chose to keep active from the deactivated list
+  diff.deactivated = diff.deactivated.filter((p) => {
+    const key = `${p.emp_id}::${p.store_name}`;
+    return !keepActiveSet.has(key);
+  });
 
   let created = 0;
   let reactivated = 0;
