@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import type { Packer } from "@/lib/db";
+import type { Packer, Store } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 
@@ -12,6 +12,8 @@ export function ManagerPackerList({
   editHrefBase = "/manager",
   lockedWhenClosed = true,
   onDelete,
+  onMove,
+  moveStores = [],
 }: {
   packers: Packer[];
   cycleOpen: boolean;
@@ -21,10 +23,15 @@ export function ManagerPackerList({
   lockedWhenClosed?: boolean;
   /** If provided, shows a delete button per packer (admin only). */
   onDelete?: (packerId: string, packerName: string) => void;
+  /** If provided, shows a move-to-store control per packer (admin only). */
+  onMove?: (packerId: string, packerName: string, targetStoreId: string) => void;
+  moveStores?: Pick<Store, "id" | "name">[];
 }) {
   const canClick = cycleOpen || !lockedWhenClosed;
   const [filter, setFilter] = useState("");
   const [onlyMissing, setOnlyMissing] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [moveTarget, setMoveTarget] = useState(moveStores[0]?.id ?? "");
 
   const filtered = useMemo(() => {
     const f = filter.trim().toLowerCase();
@@ -76,6 +83,41 @@ export function ManagerPackerList({
                   {p.bank_details_status === "missing"
                     ? <Badge variant="warning">Missing</Badge>
                     : <Badge variant="success">Provided</Badge>}
+                  {onMove && moveStores.length > 0 && (
+                    movingId === p.id ? (
+                      <span className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+                        <select
+                          value={moveTarget}
+                          onChange={(e) => setMoveTarget(e.target.value)}
+                          className="h-7 rounded border bg-background px-1 text-xs"
+                        >
+                          {moveStores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onMove(p.id, p.name, moveTarget); setMovingId(null); }}
+                          className="text-xs text-primary hover:bg-primary/10 px-2 py-1 rounded transition-colors"
+                        >
+                          Move
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setMovingId(null); }}
+                          className="text-xs text-muted-foreground hover:underline"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveTarget(moveStores[0]?.id ?? ""); setMovingId(p.id); }}
+                        className="text-xs text-muted-foreground hover:bg-muted px-2 py-1 rounded transition-colors"
+                      >
+                        Move
+                      </button>
+                    )
+                  )}
                   {onDelete && (
                     <button
                       type="button"

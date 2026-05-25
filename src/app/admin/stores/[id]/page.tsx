@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getStoreById, getActivePackers, getOpenCycle } from "@/lib/db";
+import { getStoreById, getActivePackers, getOpenCycle, getStores } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
 import { AdminPackerList } from "./AdminPackerList";
 
@@ -9,8 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function AdminStoreDetail({ params }: { params: { id: string } }) {
   const store = await getStoreById(params.id);
   if (!store) notFound();
-  const cycle = await getOpenCycle();
-  const packers = await getActivePackers(store.id);
+  const [cycle, packers, allStores] = await Promise.all([
+    getOpenCycle(),
+    getActivePackers(store.id),
+    getStores(),
+  ]);
+  const otherStores = allStores.filter((s) => s.id !== store.id);
   const missing = packers.filter((p) => p.bank_details_status === "missing").length;
 
   return (
@@ -33,6 +37,7 @@ export default async function AdminStoreDetail({ params }: { params: { id: strin
           packers={packers}
           cycleOpen={!!cycle}
           storeId={store.id}
+          otherStores={otherStores}
         />
 
         {packers.length === 0 && (

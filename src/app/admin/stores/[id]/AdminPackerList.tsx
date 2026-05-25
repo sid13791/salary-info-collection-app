@@ -1,10 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Packer } from "@/lib/db";
+import type { Packer, Store } from "@/lib/db";
 import { ManagerPackerList } from "@/app/manager/PackerList";
 
-export function AdminPackerList({ packers, cycleOpen, storeId }: { packers: Packer[]; cycleOpen: boolean; storeId: string }) {
+export function AdminPackerList({
+  packers,
+  cycleOpen,
+  storeId,
+  otherStores,
+}: {
+  packers: Packer[];
+  cycleOpen: boolean;
+  storeId: string;
+  otherStores: Pick<Store, "id" | "name">[];
+}) {
   const router = useRouter();
 
   async function handleDelete(packerId: string, packerName: string) {
@@ -18,6 +29,20 @@ export function AdminPackerList({ packers, cycleOpen, storeId }: { packers: Pack
     router.refresh();
   }
 
+  async function handleMove(packerId: string, packerName: string, targetStoreId: string) {
+    const res = await fetch(`/api/packers/${packerId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ store_id: targetStoreId }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.error ?? "Move failed");
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <ManagerPackerList
       packers={packers}
@@ -25,6 +50,8 @@ export function AdminPackerList({ packers, cycleOpen, storeId }: { packers: Pack
       editHrefBase={`/admin/stores/${storeId}/packers`}
       lockedWhenClosed={false}
       onDelete={handleDelete}
+      onMove={otherStores.length > 0 ? handleMove : undefined}
+      moveStores={otherStores}
     />
   );
 }
