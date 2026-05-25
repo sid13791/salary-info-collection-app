@@ -23,14 +23,32 @@ export default async function globalSetup() {
   const sql = postgres(DATABASE_URL, { max: 1, idle_timeout: 5 });
 
   try {
-    // Clean all transactional data + test users, but preserve real admin accounts
-    await sql`DELETE FROM cycle_packers`;
-    await sql`DELETE FROM audit_log`;
-    await sql`DELETE FROM cycles`;
-    await sql`DELETE FROM packers`;
-    await sql`DELETE FROM sessions`;
+    // Clean only test data — preserve real stores, packers, and users
+    const TEST_STORES = ['Delhi - Connaught Place', 'Mumbai - Bandra'];
+
+    // Get test store IDs for targeted cleanup
+    const testStores = await sql`SELECT id FROM stores WHERE name = ANY(${TEST_STORES})`;
+    const testStoreIds = testStores.map(r => r.id);
+
+    if (testStoreIds.length > 0) {
+      await sql`DELETE FROM audit_log WHERE packer_id IN (SELECT id FROM packers WHERE store_id = ANY(${testStoreIds}))`;
+      await sql`DELETE FROM cycle_packers WHERE store_id = ANY(${testStoreIds})`;
+      await sql`DELETE FROM packers WHERE store_id = ANY(${testStoreIds})`;
+    }
+
+    // Delete test cycles opened by test users
+    const testUsers = await sql`SELECT id FROM users WHERE email LIKE '%@test.local'`;
+    const testUserIds = testUsers.map(r => r.id);
+    if (testUserIds.length > 0) {
+      await sql`DELETE FROM cycles WHERE opened_by = ANY(${testUserIds})`;
+    }
+
+    await sql`DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email LIKE '%@test.local')`;
     await sql`DELETE FROM users WHERE email LIKE '%@test.local'`;
-    await sql`DELETE FROM stores`;
+
+    if (testStoreIds.length > 0) {
+      await sql`DELETE FROM stores WHERE id = ANY(${testStoreIds})`;
+    }
 
     // ---------- Seed ----------
     const ncrId = randomUUID();
