@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiRequireUser, apiRequireAdmin } from "@/lib/auth";
-import { sql, getPackerById, getOpenCycle, deriveStatus, insertAudit } from "@/lib/db";
+import { sql, getPackerById, getOpenCycle, getStoreById, deriveStatus, insertAudit } from "@/lib/db";
 import { ACCOUNT_REGEX, IFSC_REGEX, PHONE_REGEX, normalizeDigits, normalizeIfsc } from "@/lib/validators";
 import { requireJsonContentType } from "@/lib/csrf";
 
@@ -11,6 +11,8 @@ const patchSchema = z.object({
   phone: z.string().regex(PHONE_REGEX, "Phone must be 10 digits"),
 });
 
+const moveSchema = z.object({ store_id: z.string().uuid() });
+
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const csrfErr = requireJsonContentType(req);
   if (csrfErr) return csrfErr;
@@ -18,6 +20,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const user = await apiRequireUser();
   const packer = await getPackerById(params.id);
   if (!packer) return NextResponse.json({ error: "Packer not found" }, { status: 404 });
+
+  // Admin-only: move packer to a different store
+  const body = await req.json().catch(() => ({}));
+  if ("store_id" in body) {
+    if (user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const parsed = moveSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Invalid store_id" }, { status: 400 });
+    if (!(await getStoreById(parsed.data.store_id))) {
+      return NextResponse.json({ error: "Store not found" }, { status: 400 });
+    }
+    await sql`UPDATE packers SET store_id = ${parsed.data.store_id}, updated_at = now() WHERE id = ${params.id}`;
+    await insertAudit({
+      packer_id: params.id,
+      field_changed: "store_id",
+      old_value: packer.store_id,
+      new_value: parsed.data.store_id,
+      changed_by: user.id,
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   // Authorization:
   //  - admin: always allowed
@@ -31,7 +53,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
-  const body = await req.json().catch(() => ({}));
   const normalized = {
     bank_account_no: typeof body.bank_account_no === "string" ? normalizeDigits(body.bank_account_no) : body.bank_account_no,
     ifsc_code: typeof body.ifsc_code === "string" ? normalizeIfsc(body.ifsc_code) : body.ifsc_code,

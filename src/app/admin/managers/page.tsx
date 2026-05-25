@@ -1,6 +1,7 @@
 import { sql, getStores } from "@/lib/db";
 import { Badge } from "@/components/ui/Badge";
 import { NewManagerForm } from "./NewManagerForm";
+import { ReassignManagerStore } from "./ReassignManagerStore";
 
 export const dynamic = "force-dynamic";
 
@@ -8,13 +9,14 @@ interface ManagerRow {
   id: string;
   email: string;
   is_active: number;
+  store_id: string | null;
   store_name: string | null;
 }
 
 export default async function ManagersPage() {
   const stores = await getStores();
   const managers = [...await sql<ManagerRow[]>`
-    SELECT u.id, u.email, u.is_active, s.name AS store_name
+    SELECT u.id, u.email, u.is_active, u.store_id, s.name AS store_name
     FROM users u
     LEFT JOIN stores s ON s.id = u.store_id
     WHERE u.role = 'manager'
@@ -36,6 +38,7 @@ export default async function ManagersPage() {
                   <th className="px-3 py-2 font-medium">Email</th>
                   <th className="px-3 py-2 font-medium">Store</th>
                   <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -46,10 +49,13 @@ export default async function ManagersPage() {
                     <td className="px-3 py-2">
                       {m.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>}
                     </td>
+                    <td className="px-3 py-2">
+                      <ReassignManagerStore managerId={m.id} currentStoreId={m.store_id} stores={stores} />
+                    </td>
                   </tr>
                 ))}
                 {managers.length === 0 && (
-                  <tr><td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">No managers yet.</td></tr>
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No managers yet.</td></tr>
                 )}
               </tbody>
             </table>
