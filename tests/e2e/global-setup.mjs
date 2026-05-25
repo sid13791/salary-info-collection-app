@@ -36,10 +36,11 @@ export default async function globalSetup() {
       await sql`DELETE FROM packers WHERE store_id = ANY(${testStoreIds})`;
     }
 
-    // Delete test cycles opened by test users
+    // Delete test cycles and audit rows authored by test users
     const testUsers = await sql`SELECT id FROM users WHERE email LIKE '%@test.local'`;
     const testUserIds = testUsers.map(r => r.id);
     if (testUserIds.length > 0) {
+      await sql`DELETE FROM audit_log WHERE changed_by = ANY(${testUserIds})`;
       await sql`DELETE FROM cycles WHERE opened_by = ANY(${testUserIds})`;
     }
 
