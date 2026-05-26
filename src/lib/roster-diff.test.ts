@@ -158,4 +158,31 @@ describe("diffRoster", () => {
     expect(d.deactivated).toHaveLength(1);
     expect(d.deactivated[0].emp_id).toBe("EMP0001004");
   });
+
+  it("multi-store isolation: uploading for Store B does not deactivate Store A packers (caller pre-filters existing)", () => {
+    // Store A packers
+    const storeA1 = existing({ id: "a1", emp_id: "EMP0001001", store_name: "NOD-Sector-10 New", store_id: "store-nod" });
+    const storeA2 = existing({ id: "a2", emp_id: "EMP0001002", store_name: "NOD-Sector-10 New", store_id: "store-nod" });
+    // Store B packers
+    const storeB1 = existing({ id: "b1", emp_id: "EMP0002001", store_name: "MUM-Andheri", store_id: "store-mum" });
+
+    // Admin uploads a file targeting Store B only
+    // The caller (API route) should pre-filter existing to Store B only
+    const storeBExisting = [storeB1];
+    const storeBUpload = [
+      uploaded({ emp_id: "EMP0002001", store_name: "MUM-Andheri" }),
+      uploaded({ emp_id: "EMP0002002", store_name: "MUM-Andheri", name: "New Packer" }),
+    ];
+
+    const d = diffRoster(storeBExisting, storeBUpload, knownStores);
+
+    // Store B packer matched
+    expect(d.matched).toHaveLength(1);
+    expect(d.matched[0].existing.emp_id).toBe("EMP0002001");
+    // New Store B packer
+    expect(d.newPackers).toHaveLength(1);
+    expect(d.newPackers[0].emp_id).toBe("EMP0002002");
+    // No deactivations — Store A packers were never passed in
+    expect(d.deactivated).toHaveLength(0);
+  });
 });
