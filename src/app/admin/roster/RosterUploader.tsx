@@ -14,6 +14,7 @@ interface RosterUploaderProps {
 
 export function RosterUploader({ stores, cycleOpen }: RosterUploaderProps) {
   const router = useRouter();
+  const [selectedStore, setSelectedStore] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<DiffPreview | null>(null);
   const [parsedRows, setParsedRows] = useState<unknown[] | null>(null);
@@ -37,7 +38,7 @@ export function RosterUploader({ stores, cycleOpen }: RosterUploaderProps) {
       const res = await fetch("/api/roster/preview", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ rows: parsed.rows }),
+        body: JSON.stringify({ rows: parsed.rows, targetStore: selectedStore }),
       });
       const body = await res.json();
       if (!res.ok) {
@@ -65,6 +66,7 @@ export function RosterUploader({ stores, cycleOpen }: RosterUploaderProps) {
         rows: parsedRows,
         removedKeys: [...removedKeys],
         keepActive: [...keepActiveKeys],
+        targetStore: selectedStore,
       }),
     });
     const body = await res.json();
@@ -85,15 +87,44 @@ export function RosterUploader({ stores, cycleOpen }: RosterUploaderProps) {
 
   return (
     <div className="space-y-4">
-      <label className="block border-2 border-dashed rounded-md p-8 text-center cursor-pointer hover:bg-muted/40 transition">
+      {/* Store selector */}
+      <div>
+        <label htmlFor="target-store" className="block text-sm font-medium mb-1">
+          Target store
+        </label>
+        <select
+          id="target-store"
+          value={selectedStore}
+          onChange={(e) => {
+            setSelectedStore(e.target.value);
+            setPreview(null);
+            setFile(null);
+            setParsedRows(null);
+            setError(null);
+          }}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        >
+          <option value="">Select a store…</option>
+          {stores.map((s) => (
+            <option key={s.id} value={s.name}>{s.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <label className={`block border-2 border-dashed rounded-md p-8 text-center transition ${selectedStore ? "cursor-pointer hover:bg-muted/40" : "cursor-not-allowed opacity-50"}`}>
         <input
           type="file"
           accept=".xlsx,.xls"
           className="hidden"
+          disabled={!selectedStore}
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
         <span className="text-sm">
-          {file ? `Selected: ${file.name}` : "Click to choose an .xlsx file (or drag here)"}
+          {!selectedStore
+            ? "Select a target store first"
+            : file
+              ? `Selected: ${file.name}`
+              : "Click to choose an .xlsx file (or drag here)"}
         </span>
       </label>
 
