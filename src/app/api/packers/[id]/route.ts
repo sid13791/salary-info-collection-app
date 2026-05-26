@@ -103,7 +103,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const csrfErr = requireJsonContentType(req);
+  if (csrfErr) return csrfErr;
+
   const user = await apiRequireAdmin();
   const packer = await getPackerById(params.id);
   if (!packer) return NextResponse.json({ error: "Packer not found" }, { status: 404 });
