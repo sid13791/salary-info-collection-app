@@ -9,6 +9,7 @@ const bodySchema = z.object({
   rows: z.array(z.object({ emp_id: z.string(), name: z.string(), store_name: z.string(), packman_status: z.string(), current_role_name: z.string().optional().default("") })),
   removedKeys: z.array(z.string()).optional().default([]),
   keepActive: z.array(z.string()).optional().default([]),
+  targetStore: z.string().min(1, "Target store is required"),
 });
 
 export async function POST(req: Request) {
@@ -27,27 +28,36 @@ export async function POST(req: Request) {
   const storeIdToName = new Map(stores.map((s) => [s.id, s.name]));
   const knownStoreNames = new Set(stores.map((s) => s.name));
 
+  const targetStore = parsed.data.targetStore.trim();
+  if (!knownStoreNames.has(targetStore)) {
+    return NextResponse.json({ error: `Unknown target store "${targetStore}"` }, { status: 400 });
+  }
+
   const dbPackers = [...await sql<{ id: string; emp_id: string; name: string; store_id: string; is_active: number }[]>`
     SELECT id, emp_id, name, store_id, is_active FROM packers
   `];
 
-  const existing: ExistingPacker[] = dbPackers.map((p) => ({
-    id: p.id,
-    emp_id: p.emp_id,
-    name: p.name,
-    store_id: p.store_id,
-    store_name: storeIdToName.get(p.store_id) ?? "",
-    is_active: p.is_active === 1,
-  }));
+  const existing: ExistingPacker[] = dbPackers
+    .map((p) => ({
+      id: p.id,
+      emp_id: p.emp_id,
+      name: p.name,
+      store_id: p.store_id,
+      store_name: storeIdToName.get(p.store_id) ?? "",
+      is_active: p.is_active === 1,
+    }))
+    .filter((p) => p.store_name === targetStore);
 
   const removedSet = new Set(parsed.data.removedKeys);
   const keepActiveSet = new Set(parsed.data.keepActive);
 
-  // Filter out rows the admin removed from matched/new/reactivated
-  const filteredRows = parsed.data.rows.filter((r) => {
-    const key = `${r.emp_id}::${r.store_name}`;
-    return !removedSet.has(key);
-  });
+  // Filter to target store rows only, then apply admin exclusions
+  const filteredRows = parsed.data.rows
+    .filter((r) => r.store_name.trim() === targetStore)
+    .filter((r) => {
+      const key = `${r.emp_id}::${r.store_name}`;
+      return !removedSet.has(key);
+    });
 
   const diff = diffRoster(existing, filteredRows, knownStoreNames);
   if (diff.invalidRows.length > 0) {
