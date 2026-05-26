@@ -28,6 +28,7 @@ export interface DiffPreview {
   deactivated: PackerEntry[];
   storeMigrations: MigrationEntry[];
   invalidRows: InvalidEntry[];
+  mismatchedRows?: PackerEntry[];
 }
 
 interface RosterSummaryModalProps {
@@ -128,6 +129,14 @@ export function RosterSummaryModal({ diff, busy, onCommit, onDiscard }: RosterSu
         <h2 className="text-lg font-semibold">Roster Upload Summary</h2>
         <Button variant="ghost" size="sm" onClick={onDiscard}>✕ Close</Button>
       </div>
+
+      {/* Mismatched rows warning */}
+      {diff.mismatchedRows && diff.mismatchedRows.length > 0 && (
+        <div className="mx-6 mt-3 rounded-md border border-warning/30 bg-warning/5 p-3 text-sm text-warning">
+          {diff.mismatchedRows.length} row(s) for other stores were ignored:{" "}
+          {[...new Set(diff.mismatchedRows.map((r) => r.store_name))].join(", ")}
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="border-b px-6 flex gap-1 overflow-x-auto">
