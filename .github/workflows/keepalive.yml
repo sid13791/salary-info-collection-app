@@ -1,0 +1,16 @@
+name: Supabase keep-alive
+
+# Pings the app's /api/health endpoint (which runs SELECT 1) so the Supabase
+# free-tier project never hits its ~7-day idle auto-pause. Every 3 days leaves
+# a safe margin even if a scheduled run is delayed. Also runnable manually.
+on:
+  schedule:
+    - cron: "0 6 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl --fail --silent --show-error https://salary-info-collection-app.vercel.app/api/health
