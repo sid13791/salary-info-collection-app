@@ -44,6 +44,7 @@ jobs:
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh label create db-alert --color B60205 \
             --description "Automated DB health alert" 2>/dev/null || true
@@ -68,6 +69,7 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           for n in $(gh issue list --label db-alert --state open --json number --jq '.[].number'); do
             gh issue close "$n" \
