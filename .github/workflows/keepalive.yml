@@ -1,16 +1,23 @@
-name: Supabase keep-alive
+name: DB health monitor
 
-# Pings the app's /api/health endpoint (which runs SELECT 1) so the Supabase
-# free-tier project never hits its ~7-day idle auto-pause. Every 3 days leaves
-# a safe margin even if a scheduled run is delayed. Also runnable manually.
+# Hits /api/health hourly. The endpoint queries the real `packers` table, so
+# this serves two jobs at once:
+#   1. Keep-alive — a bare SELECT 1 did NOT stop the Supabase free-tier ~7-day
+#      idle auto-pause (paused twice in Jun 2026); a real table query does.
+#   2. Uptime monitor — if the endpoint returns non-2xx (DB down, unreachable,
+#      or schema missing/empty), `curl --fail` fails the job and GitHub emails
+#      the repo owner. Verify Settings > Notifications > Actions has email-on-
+#      failure enabled so the alert actually reaches you.
 on:
   schedule:
-    - cron: "0 6 */3 * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
-  ping:
+  check:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping health endpoint
-        run: curl --fail --silent --show-error https://salary-info-collection-app.vercel.app/api/health
+      - name: Check DB health endpoint
+        run: |
+          curl --fail --silent --show-error --max-time 30 \
+            https://salary-info-collection-app.vercel.app/api/health
